@@ -190,6 +190,7 @@ export function makePlayer(o){
     if(p.sit){P(A.sit||A.refIdle,1,(t*.6)%((MX[A.sit]||{dur:4}).dur));locoW=0}
     else if(p.cele&&sp<.45){// comemora parado; correndo, usa a corrida normal (nada de deslizar na pose de comemoração)
       const c=A.cele[(p.cele-1)%5]||A.cele[0];const m=MX[c];if(m){P(c,1,(t*.9)%m.dur);locoW=0}}
+    else if((special==='beaten'||special==='stumble')&&A.stumble&&an<.8){const m=MX[A.stumble];P(A.stumble,1,Math.min(m.dur-.02,an*1.3));locoW=0}// driblado / perdeu a bola: tropeça
     else if(special==='lament'&&A.sad){P(A.sad,1,Math.min(MX[A.sad].dur-.05,an*.9));locoW=0}
     else if(special==='slide'&&A.tackle){const n=side(A.tackle,FT);const m=MX[n];P(n,1,Math.min(m.dur-.02,an*1.45));locoW=0}
     else if(special==='fall'){const tr=A.trip||A.stumble;const d1=(MX[tr]?MX[tr].dur:1)/1.25;if(an<d1)P(tr,1,an*1.25);else if(an<d1+.3&&A.fallen)P(A.fallen,1,an-d1);else if(A.getup)P(A.getup,1,(an-d1-.3)*2.1);locoW=0}
@@ -223,6 +224,7 @@ export function makePlayer(o){
       const n=side(A.scissor,FT);const m=MX[n];const a=p.skill.a;kw=1;P(n,1,Math.min(m.dur-.02,a<.3?m.hit*(.5+a/.6):m.hit+(a-.3)*1.05));locoW=0}
     else if(p.kick){}
     else if(p.skill&&p.skill.k==='spin'&&A.spin){const m=MX[A.spin];kw=Math.min(1,p.skill.a/.12,(1.2-p.skill.a)/.2);kw=Math.max(0,Math.min(1,kw));P(A.spin,kw,Math.min(m.dur-.02,p.skill.a*m.dur/1.2))}
+    else if(special==='shoulder'&&A.pass&&an<.6){const n=side(A.pass,FT);const k=Math.min(1,an/.6);kw=Math.min(1,k/.15,(1-k)/.3);kw=Math.max(0,kw);kw=kw*kw*(3-2*kw);P(n,kw,kickT(n,k))}// desarme em pé: estica a perna na bola
     else if(p.trap==='thigh'&&A.thigh){kw=.7;P(A.thigh,kw,MX[A.thigh].hit*.9)}
     else if(p.trap&&A.trap){kw=.6;P(A.trap,kw,MX[A.trap].hit*.8)}
     else if(p.jump&&!o.gk&&A.head){kw=1;P(A.head,1,MX[A.head].hit*.85);RY+=.28;locoW=0}

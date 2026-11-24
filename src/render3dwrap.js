@@ -1,7 +1,7 @@
 // FUTBOL — ponte para o motor 3D: usa o 2D enquanto o 3D carrega (ou se o aparelho não suportar WebGL)
 const C11Render3D=(()=>{
   const base=()=>{try{return new URL('3d/',location.href.replace(/[#?].*$/,'').replace(/[^/]*$/,'')).href}catch(e){return '3d/'}};
-  let modP=null;const mod=()=>modP||(modP=import(base()+'render3d.js?v=30'));
+  let modP=null;const mod=()=>modP||(modP=import(base()+'render3d.js?v=31'));
   function supported(){try{const c=document.createElement('canvas');return !!(window.WebGL2RenderingContext&&c.getContext('webgl2'))}catch(e){return false}}
   class Hybrid{
     constructor(cv,m,opts){this.r2=new C11Render.Renderer(cv,m,opts);const d2=this.r2.draw.bind(this.r2);this.d2=d2;this.r2.draw=(v,dt)=>this.draw(v,dt);this.cv=cv;this.m=m;this.on=false;this.eng=null;this._a=1;
@@ -50,6 +50,15 @@ const C11Render3D=(()=>{
         const [sx,sy,ok]=(this.eng.screenOf&&this.eng.screenOf(p.id,2.25))||this.eng.project(p.x,p.y,2.25);if(!ok||sx<-30||sx>r2.cw+30)continue;
         const nm=own?`${inf.num} ${inf.name}`:String(inf.num);ctx.font=`700 ${own?13:10}px "Barlow Condensed",sans-serif`;const tw=ctx.measureText(nm).width;
         ctx.fillStyle=own?'rgba(10,12,10,.8)':'rgba(10,12,10,.45)';ctx.fillRect(sx-tw/2-4,sy-15,tw+8,own?16:13);ctx.fillStyle=own?'#fff36b':'#fff';ctx.textAlign='center';ctx.fillText(nm,sx,sy-(own?3:4))}}
+      // efeitos de lance: DRIBLE! / DESARME! subindo sobre o jogador
+      if(!this.introT){const nowp=performance.now()/1000;this.pops=this.pops||[];this.popSeen=this.popSeen||new Set();
+        for(const p of v.pl){if(!p.fx)continue;const key=p.id+':'+p.fx.id+p.fx.k;if(this.popSeen.has(key))continue;this.popSeen.add(key);if(this.popSeen.size>300)this.popSeen=new Set([key]);
+          if(this.pops.some(q=>nowp-q.t0<.9))continue;this.pops.push({id:p.id,k:p.fx.k,t0:nowp,x:p.x,y:p.y})}
+        this.pops=this.pops.filter(q=>nowp-q.t0<1.2);
+        for(const q of this.pops){const a=(nowp-q.t0)/1.2;const pos=(this.eng.screenOf&&this.eng.screenOf(q.id,2.7))||this.eng.project(q.x,q.y,2.7);if(!pos||!pos[2])continue;
+          const txt=q.k==='drible'?'DRIBLE!':'DESARME!';ctx.save();ctx.globalAlpha=Math.max(0,a<.12?a/.12:1-Math.max(0,(a-.62)/.38));const sc=1+.35*Math.max(0,1-a*6);
+          ctx.translate(pos[0],pos[1]-20-a*26);ctx.rotate(-.06);ctx.scale(sc,sc);ctx.font='italic 900 19px "Barlow Condensed",sans-serif';ctx.textAlign='center';ctx.lineJoin='round';
+          ctx.lineWidth=5;ctx.strokeStyle='rgba(0,0,0,.8)';ctx.strokeText(txt,0,0);ctx.fillStyle=q.k==='drible'?'#ffd60a':'#4ade80';ctx.fillText(txt,0,0);ctx.restore()}}
     }
   }
   // pré-carrega o motor e os jogadores assim que o jogo abre (a partida já começa em 3D)

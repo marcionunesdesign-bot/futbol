@@ -1,6 +1,6 @@
 // FUTBOL — motor visual 3D da partida (Three.js)
 import * as T from './three.module.min.js';
-import {loadAssets,makePlayer} from './players3d.js?v=30';
+import {loadAssets,makePlayer} from './players3d.js?v=31';
 export {loadAssets};
 
 const L=105,W=68,GW=7.32,GH=2.44;
@@ -323,8 +323,8 @@ export class Engine{
       // tipo de chute/passe, animações especiais, goleiro com a bola na mão
       pose.kk=p.kk;
       // animações especiais contadas em tempo real (o relógio do jogo para nas bolas paradas)
-      if(p.anim&&P.animId!==p.anim.id+p.anim.k){P.animId=p.anim.id+p.anim.k;P.animT0=t;P.animK=p.anim.k}
-      if(P.animK){const age=t-P.animT0;const lim=P.animK==='fall'?2.3:P.animK==='slide'?1.75:P.animK==='lament'?1.5:1.3;if(age>lim||own||(v.setup&&v.setup.taker===p.id))P.animK=null;else pose.anim={k:P.animK,a:age}}if(p.hold&&v.own===p.id)pose.hold=1;
+      if(p.anim&&P.animId!==p.anim.id+p.anim.k){P.animId=p.anim.id+p.anim.k;P.animT0=t;P.animK=p.anim.k;if(p.anim.k==='slide')this.spray(x,z,P.h)}
+      if(P.animK){const age=t-P.animT0;const lim=P.animK==='fall'?2.3:P.animK==='slide'?1.75:P.animK==='lament'?1.5:1.3;if(age>lim||(own&&!(P.animK==='shoulder'&&age<.6))||(v.setup&&v.setup.taker===p.id))P.animK=null;else pose.anim={k:P.animK,a:age}}if(p.hold&&v.own===p.id)pose.hold=1;
       // lateral: segura a bola acima da cabeça
       if(v.setup&&v.setup.kind==='lateral'&&v.setup.taker===p.id){pose.throwPrep=1;P.throwing=1}else P.throwing=0;
       // anda de costas ou de lado quando o corpo está virado para a bola e o movimento é para outro lado
@@ -397,7 +397,7 @@ export class Engine{
     if(this.ads)for(const a of this.ads)a.offset.x=(t*.04)%1;
     if(this.cts){const j=v.cele?Math.abs(Math.sin(t*9))*.006:Math.sin(t*1.3)*.0006;for(const c of this.cts)c.offset.y=j}
     if(this.debugCam){const [p,q,f]=this.debugCam;this.cam.position.set(...p);this.cam.fov=f||50;this.cam.updateProjectionMatrix();this.cam.lookAt(...q)}
-    this.r.render(this.s,this.cam);
+    this.sprayStep(rdt);this.r.render(this.s,this.cam);
   }
   // ---------- cena especial: pênalti / falta vista de trás do batedor ----------
   cineStart(c){this.cineS=Object.assign({t:0},c);const S=this.cineS;
@@ -442,6 +442,16 @@ export class Engine{
     this.time+=dt;this.r.render(this.s,this.cam);
     const txt=fk>1.05?({goal:'GOOOL!',save:'DEFENDEU!',miss:'PRA FORA!',block:'NA BARREIRA!'})[S.out]:null;
     if(t>=S.end){this.cineS=null;return {done:true,txt}}return {done:false,txt}}
+  spray(x,z,h){// grama levantada no carrinho
+    if(!this.sprG){const n=26*6;const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(new Float32Array(n*3),3));g.setAttribute('color',new T.BufferAttribute(new Float32Array(n*3),3));
+      this.sprM=new T.Points(g,new T.PointsMaterial({size:.11,vertexColors:true,transparent:true,opacity:.95,depthWrite:false}));this.sprM.frustumCulled=false;this.s.add(this.sprM);this.sprG=g;this.sprP=[];this.sprN=n}
+    const fx=Math.sin(h),fz=Math.cos(h);for(let i=0;i<26;i++){const a=Math.random()*Math.PI*2,sp=1+Math.random()*2.6;const dirt=Math.random()<.3;
+      this.sprP.push({x:x+fx*.4,y:.05,z:z+fz*.4,vx:fx*sp*1.3+Math.cos(a)*sp*.5,vy:1.2+Math.random()*2.2,vz:fz*sp*1.3+Math.sin(a)*sp*.5,life:.55+Math.random()*.45,c:dirt?[.45,.33,.2]:[.3+Math.random()*.15,.62+Math.random()*.15,.25]})}
+    if(this.sprP.length>this.sprN)this.sprP.splice(0,this.sprP.length-this.sprN)}
+  sprayStep(dt){if(!this.sprG)return;const P=this.sprG.attributes.position.array,C=this.sprG.attributes.color.array;let i=0;
+    this.sprP=this.sprP.filter(q=>(q.life-=dt)>0);for(const q of this.sprP){q.vy-=9.8*dt;q.x+=q.vx*dt;q.y=Math.max(.02,q.y+q.vy*dt);q.z+=q.vz*dt;q.vx*=.96;q.vz*=.96;
+      P[i*3]=q.x;P[i*3+1]=q.y;P[i*3+2]=q.z;C[i*3]=q.c[0];C[i*3+1]=q.c[1];C[i*3+2]=q.c[2];i++}
+    for(let j=i;j<this.sprN;j++){P[j*3+1]=-50}this.sprG.attributes.position.needsUpdate=true;this.sprG.attributes.color.needsUpdate=true;this.sprG.setDrawRange(0,Math.max(1,i))}
   screenOf(id,z){const P=this.pl.get(id);if(!P||!P.root.visible)return null;const v=new T.Vector3(P.root.position.x,z,P.root.position.z).project(this.cam);return [(v.x+1)/2*this.w,(1-v.y)/2*this.h,v.z<1]}
   project(x,y,z){const p=new T.Vector3(wx(x),z,wz(y)).project(this.cam);return [(p.x+1)/2*this.w,(1-p.y)/2*this.h,p.z<1]}
   dispose(){try{this.r.dispose();this.cv.remove()}catch(e){}}

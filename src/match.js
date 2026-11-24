@@ -177,7 +177,8 @@ class Match{
       const f=b.fly;if(f.recv&&!f.recv.off){f.recv.tx=f.ix??f.tx;f.recv.ty=f.iy??f.ty;f.recv.sprint=true}
       if(f.icp){f.icp.tx=f.ix;f.icp.ty=f.iy;f.icp.sprint=true}
       if(f.kind==='pass'||f.kind==='clear'){const O=this.T[1-f.side];let best=null,bd=1e9;for(const m of this.active(O)){if(O.slots[m.si].role==='GOL')continue;const d=hyp(m.x-f.tx,m.y-f.ty);if(d<bd){bd=d;best=m}}if(best&&bd<15&&best!==f.icp){best.tx=f.tx;best.ty=f.ty;best.sprint=true}}
-      if(f.kind==='shot'){const g=this.gk(this.T[1-f.side]);if(g){g.tx=f.gx??g.tx;g.ty=f.gy??g.ty;g.sprint=true}}
+      // chute: o goleiro firma na posição e só ajusta um passo para o lado (o mergulho fica por conta da animação)
+      if(f.kind==='shot'){const g=this.gk(this.T[1-f.side]);if(g){if(g.shotY0==null||g.shotF!==f){g.shotF=f;g.shotX0=g.x;g.shotY0=g.y}g.tx=g.shotX0;g.ty=g.shotY0+clamp((f.gy??g.shotY0)-g.shotY0,-.9,.9);g.sprint=false}}
     }else if(b.st==='loose'){
       for(const T of this.T){let best=null,bd=1e9;for(const m of this.active(T)){const d=hyp(m.x-b.x,m.y-b.y)/this.spd(m);if(d<bd){bd=d;best=m}}if(best){best.tx=b.x+b.vx*.3;best.ty=b.y+b.vy*.3;best.sprint=true}}
       const g=this.gk(this.T[b.x<L/2?0:1]);if(g&&hyp(g.x-b.x,g.y-b.y)<12&&Math.abs(b.x-ownGoalX(g.side))<16.5){g.tx=b.x;g.ty=b.y;g.sprint=true}
@@ -201,6 +202,8 @@ class Match{
       const g2=this.gk(O);if(g2){g2.tx=gx+(sp.side===0?-.6:.6);g2.ty=W/2+(sp.y<W/2?-1.5:1.5)}
     }else if(sp.kind==='pen'){const gx=goalX(sp.side);for(const T of this.T)for(const m of this.active(T)){if(m===sp.taker){m.tx=sp.x-(sp.side===0?1:-1);m.ty=W/2;continue}
         if(T.slots[m.si].role==='GOL'&&T.side!==sp.side){m.tx=gx;m.ty=W/2;continue}if(Math.abs(m.tx-gx)<18){m.tx=gx+(sp.side===0?-19:19)}}}
+    else if(sp.kind==='tiro'&&sp.taker){// tiro de meta: o goleiro se afasta uns passos e vem correndo para bater
+      const g=sp.taker,dir=sp.x<L/2?1:-1,run=this.dead>.8;g.tx=run?sp.x-dir*3:sp.x-dir*.3;g.ty=run?sp.y-1.4:sp.y-.15;g.sprint=run&&hyp(g.x-g.tx,g.y-g.ty)>5}
     else if(sp.taker){sp.taker.tx=sp.x;sp.taker.ty=sp.y;sp.taker.sprint=true}
     if(sp.kind==='falta'&&sp.taker){const O=this.T[1-sp.taker.side];for(const m of this.active(O)){const dx=m.tx-sp.x,dy=m.ty-sp.y,d=hyp(dx,dy)||1;if(d<9.3){m.tx=clamp(sp.x+dx/d*9.3,.5,L-.5);m.ty=clamp(sp.y+dy/d*9.3,.5,W-.5)}}}
   }
@@ -272,7 +275,7 @@ class Match{
     this.setDead(kind==='falta'?1.1:kind==='lateral'?1.3:.9,()=>{best.x=x;best.y=y;this.give(best,true);if(kind==='lateral')best.throwIn=true;else best.setP=true;best.decide=this.t+(kind==='lateral'?.6:.25)},{kind,taker:best,x,y});this.ball.x=x;this.ball.y=y;
   }
   goalKick(side){const g=this.gk(this.T[side]);const x=side===0?5.5:L-5.5;this.ball.x=x;this.ball.y=W/2;
-    this.setDead(1.3,()=>{g.x=x;g.y=W/2;g.vx=g.vy=0;this.give(g,true);g.setP=true;g.gkKick=true;g.decide=this.t+.5},{kind:'tiro',taker:g,x,y:W/2})}// tiro de meta: o goleiro bate de primeira (passe ou chutão), sem conduzir
+    this.setDead(2.1,()=>{g.x=x-(side===0?.3:-.3);g.y=W/2-.15;g.vx=g.vy=0;this.give(g,true);g.setP=true;g.gkKick=true;g.decide=this.t+.02},{kind:'tiro',taker:g,x,y:W/2})}// tiro de meta: o goleiro bate de primeira (passe ou chutão), sem conduzir
   corner(side,top){const x=side===0?L-.4:.4,y=top?.4:W-.4;this.T[side].st.co++;this.ev('corner',side,fill(pick(TXT.corner),{t:this.T[side].name}));
     const A=this.T[side];const taker=this.taker(A,'ck');
     this.ball.x=x;this.ball.y=y;this.ball.z=0;this.setDead(2.8,()=>this.cross(taker,side,x,y),{kind:'corner',side,taker,x,y});}
@@ -421,11 +424,11 @@ class Match{
       if(foul){this.foul(o,car);return}
       const pS=clamp(.36+(o.a.des-car.a.dri)*.035+(o.a.frc-car.a.frc)*.012+((o.a.agr||10)-10)*.006+((o.a.ace||10)-(car.a.ace||10))*.006-(this.t<car.ctrl?-.12:0),.12,.82);
       const slide=d>1.15||R()<.2;
-      if(R()<pS){o.s.tk++;o.r+=.12;O.st.tk++;car.r-=.06;
+      if(R()<pS){o.s.tk++;o.r+=.12;O.st.tk++;car.r-=.06;o.fx={k:'desarme',t:this.t};
         if(slide){this.slideOf(o,car);const b=this.ball;b.st='loose';b.own=null;const a=Math.atan2(car.y-o.y,car.x-o.x)+rnd(-.6,.6);b.vx=Math.cos(a)*rnd(4,7);b.vy=Math.sin(a)*rnd(4,7);this.lastTouch=o.side}
-        else{o.anim={k:'shoulder',t:this.t};if(R()<.62){this.give(o)}else{const b=this.ball;b.st='loose';b.own=null;b.vx=rnd(-4,4);b.vy=rnd(-4,4);this.lastTouch=o.side}}
+        else{o.anim={k:'shoulder',t:this.t};car.anim={k:'stumble',t:this.t};if(R()<.62){this.give(o)}else{const b=this.ball;b.st='loose';b.own=null;b.vx=rnd(-4,4);b.vy=rnd(-4,4);this.lastTouch=o.side}}
         car.frozen=.35;return}
-      else{o.frozen=.75;car.r+=.04;if(slide)this.slideOf(o,car)}
+      else{o.frozen=.75;car.r+=.04;car.fx={k:'drible',t:this.t};if(slide)this.slideOf(o,car);else o.anim={k:'beaten',t:this.t}}
     }
   }
   // carrinho: o jogador desliza ~1,5 m na direção do adversário, fica no chão e levanta (parado de verdade)
