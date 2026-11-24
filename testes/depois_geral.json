@@ -1,0 +1,23 @@
+{
+ "jogos": 20,
+ "travados": 0,
+ "gols_jogo": "2.55",
+ "chutes_jogo": "12.4",
+ "passes_jogo": "136.9",
+ "acerto_passe": "80.6%",
+ "impedimentos_jogo": "1.2",
+ "desarmes_jogo": "13.7",
+ "faltas_jogo": "6.0",
+ "escanteios_jogo": "1.6",
+ "linha4_desvio_m": "3.2",
+ "bloco_profundidade_m": "36.7",
+ "bloco_largura_m": "44.5",
+ "opcoes_passe": "3.29",
+ "apoio_curto": "1.55",
+ "pressao_1o_m": "3.9",
+ "pressao_2o_m": "10.9",
+ "dupla_marcacao": "0.0%",
+ "recomp_a_frente": "1.82",
+ "ritmo_longe": "andando 12% trote 51% corrida 37%",
+ "area_no_cruzamento": "0.95"
+}

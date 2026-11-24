@@ -108,6 +108,11 @@ class Match{
   updateTargets(dt,dead){
     const b=this.ball;const poss=b.st==='own'?b.own.side:b.st==='fly'?b.fly.side:null;
     const tt=this.t;
+    // (11) contra-ataque: roubou a bola no próprio campo -> 2 atacantes disparam
+    if(poss!=null&&this._poss!=null&&poss!==this._poss&&b.st==='own'&&!dead){const T=this.T[poss];if(depth(b.x,poss)<.5){
+        const fw=this.active(T).filter(m=>['ATA','PD','PE','MEI'].includes(T.slots[m.si].role)&&m!==b.own&&m.stam>35).sort((x,y)=>(y.a.vel||10)-(x.a.vel||10)).slice(0,2);
+        for(const m of fw){m.runUntil=tt+2.6;m.runW=clamp(lat(m.y,poss)+(.5-lat(m.y,poss))*.3,.15,.85)}}}
+    if(poss!=null)this._poss=poss;
     for(const T of this.T){
       const s=T.side,O=this.T[1-s];const tac=T.tac;const att=poss===s;
       const bd=depth(b.x,s),bw=lat(b.y,s);
@@ -115,7 +120,7 @@ class Match{
       for(const m of this.active(T)){
         const sl=T.slots[m.si];const fn=C.fnOf(sl.role,sl.fn);const gk=sl.role==='GOL';let td,tw;
         if(att){const a=sl.a;
-          if(gk){td=.025+bd*.12+(fn.fwd||0);tw=.5+(bw-.5)*.2}
+          if(gk){td=(tac.line===2?.04:.025)+bd*(tac.line===2?.17:.12)+(fn.fwd||0);tw=.5+(bw-.5)*.2}// (22) linha alta: goleiro adiantado
           else{
             td=.1+a.d*.7+bd*.28+(tac.ment||0)*.03+(fn.fwd||0)-(fn.hold||0);
             tw=.5+(a.w-.5)*(1+((tac.width??1)-1)*.16)+(bw-.5)*.12;
@@ -126,9 +131,24 @@ class Match{
             if(fn.roam){td+=Math.cos(tt*.21+m.si)*.05;tw+=Math.sin(tt*.27+m.si*2)*.13}
             if(fn.cover){td-=.04;tw+=(bw-.5)*.3}
             if(sl.arrow){const k=clamp((bd-.26)/.28,0,1);td+=(sl.arrow.d-a.d)*k;tw+=(sl.arrow.w-a.w)*k}
-            td=Math.min(td,Math.max(lastDef,bd)+.012);
+            const ro=sl.role,flank=a.w<.5?0:1,ballFlank=bw<.5?0:1,wide=Math.abs(bw-.5)>.28;
+            // (9) amplitude: pontas abertos colados na linha lateral na construção
+            if((ro==='PD'||ro==='PE')&&bd<.74&&!(m.runUntil>tt))tw=flank?.94:.06;
+            // (4) centroavante na linha do último zagueiro; (7) pivô: na saída de bola vem buscar
+            if(ro==='ATA'){if(bd>.32)td=Math.max(td,lastDef-.012);else td=Math.min(td,bd+.3)}
+            // (30) personalidade: matador fica na área; meia criativo busca o jogo mais atrás
+            if(ro==='ATA'&&(m.a.fin||10)>=15&&bd>.5)td+=.025;
+            if(ro==='MEI'&&(m.a.vis||10)>=15&&(m.a.pas||10)>=15&&bd<.5)td-=.05;
+            // (3) ultrapassagem do lateral pelo lado da bola
+            if((ro==='LD'||ro==='LE')&&bd>.4&&flank===ballFlank){if(!(m.ovUntil>tt)&&R()<.006*(m.stam/100)&&depth(m.x,s)>bd-.3)m.ovUntil=tt+5.5;if(m.ovUntil>tt){const wg=this.active(T).find(w=>{const r2=T.slots[w.si].role;return (r2==='PD'||r2==='PE')&&(lat(w.y,s)<.5?0:1)===flank});td=Math.max(td,bd+.08,wg?depth(wg.x,s)+.06:0);tw=flank?.95:.05;m.ovRun=true}}
+            // (10) cruzamento: área ocupada (1º pau, 2º pau, marca do pênalti, entrada da área)
+            if(bd>.74&&wide){const sg=ballFlank?1:-1;
+              if(ro==='ATA'){td=.935;tw=.5+sg*.06}
+              else if((ro==='PD'||ro==='PE')&&flank!==ballFlank){td=.925;tw=.5-sg*.1}
+              else if(ro==='MEI'){td=.88;tw=.5-sg*.02}// (6) meia chega de trás na área
+              else if(ro==='MC'&&m.si%2===0){td=.79;tw=.5}}
             // corrida em diagonal nas costas da zaga (pode cair em impedimento se o passe atrasar)
-            if(['ATA','PD','PE','MEI'].includes(sl.role)&&bd>.35){if(!(m.runUntil>tt)&&R()<.011*(1+(m.a.vis||10)/20)){m.runUntil=tt+1.4+R();m.runW=clamp(tw+(R()-.5)*.25,.1,.9)}
+            if(['ATA','PD','PE','MEI'].includes(sl.role)&&bd>.35){if(!(m.runUntil>tt)&&R()<.011*(1+(m.a.vis||10)/20)*clamp(m.stam/80,.4,1)){m.runUntil=tt+1.4+R();m.runW=(sl.role==='PD'||sl.role==='PE')?clamp(tw+(.5-tw)*rnd(.45,.75),.15,.85):clamp(tw+(R()-.5)*.25,.1,.9)}
               if(m.runUntil>tt){td=Math.max(td,lastDef+.035);tw=m.runW;m.sprint=true}}
           }
         }else{const a=sl.df;
@@ -141,10 +161,15 @@ class Match{
           }
         }
         td=clamp(td,.015,.97);tw=clamp(tw,.03,.97);
-        const spr=!!(m.runUntil>tt&&att);m.tx=toX(td,s);m.ty=toY(tw,s);m.sprint=spr;
+        let spr=!!((m.runUntil>tt||m.ovRun)&&att);m.ovRun=false;
+        if(att&&m.wallUntil>tt){td=depth(m.wallX,s);tw=lat(m.wallY,s);spr=true}// (2) tabela: quem tocou corre para receber de volta
+        // (17) recomposição: perdeu a bola e ficou à frente dela -> volta correndo (cansado volta trotando)
+        if(!att&&!gk&&depth(m.x,s)>td+.1&&m.stam>38)spr=true;
+        m.tx=toX(td,s);m.ty=toY(tw,s);m.sprint=spr;m._td=td;
         // goleiro sai do gol para fechar o ângulo no mano a mano
         if(gk&&!att&&b.st==='own'&&b.own.side!==s){const c=b.own,ogx=ownGoalX(s);const dg=hyp(c.x-ogx,c.y-W/2);if(dg<20&&Math.abs(c.y-W/2)<16){const k=clamp((20-dg)/14,0,1)*.42;m.tx=ogx+(c.x-ogx)*k;m.ty=W/2+(c.y-W/2)*k;m.sprint=dg<12}}
       }
+      this.shapeTeam(T,att,bd,lastDef);
     }
     if(dead){this.setPieceTargets();return}
     // marcação / pressão / apoio
@@ -153,22 +178,43 @@ class Match{
       const pressR=[9,16,26][O.tac.press??1];
       const ds=this.active(O).filter(m=>O.slots[m.si].role!=='GOL').map(m=>({m,d:hyp(m.x-car.x,m.y-car.y)})).sort((a,b)=>a.d-b.d);
       const og=ownGoalX(O.side);
-      if(ds[0]&&ds[0].d<pressR){const m=ds[0].m;const ux=(og-car.x),uy=(W/2-car.y),ul=hyp(ux,uy)||1;m.tx=car.x+ux/ul*.9;m.ty=car.y+uy/ul*.9;m.sprint=true;m.press=true}
+      const pr0=ds[0]&&ds[0].m,prR=pressR*(pr0?1+(((pr0.a.agr||10)-10)*.03+((pr0.a.des||10)-10)*.02):1);
+      if(ds[0]&&ds[0].d<prR){const m=ds[0].m;const ux=(og-car.x),uy=(W/2-car.y),ul=hyp(ux,uy)||1;m.tx=car.x+ux/ul*.9;m.ty=car.y+uy/ul*.9;m.sprint=m.stam>30;m.press=true;
+        // (15) cobertura: lateral saiu para pressionar -> o zagueiro mais perto fecha o espaço dele
+        const rr=O.slots[m.si].role;if(rr==='LD'||rr==='LE'){let cb=null,cd=1e9;for(const z of this.active(O)){if(O.slots[z.si].role!=='ZAG')continue;const d=hyp(z.x-m.x,z.y-m.y);if(d<cd){cd=d;cb=z}}if(cb){cb.cover=m.y}}}
       if(ds[1]&&(O.tac.press??1)>=1&&ds[1].d<20){const m=ds[1].m;const ux=(og-car.x),uy=(W/2-car.y),ul=hyp(ux,uy)||1;m.tx=car.x+ux/ul*6;m.ty=car.y+uy/ul*6;m.sprint=ds[1].d>6}
       const pressing=new Set(ds.slice(0,2).map(x=>x.m));
       const atts=this.active(A).filter(m=>m!==car);
+      // (16) pressão coordenada: os próximos fecham as linhas de passe para os companheiros mais perto do portador
+      if((O.tac.press??1)>=1){const near=atts.filter(a=>A.slots[a.si].role!=='GOL').map(a=>({a,d:hyp(a.x-car.x,a.y-car.y)})).filter(x=>x.d<24).sort((x,y)=>x.d-y.d).slice(0,2);
+        for(const {a} of near){const lx=car.x+(a.x-car.x)*.62,ly=car.y+(a.y-car.y)*.62;let best=null,bd2=14;
+          for(const {m} of ds){if(pressing.has(m))continue;const role=O.slots[m.si].role;if(role==='ZAG')continue;const d=hyp(m.x-lx,m.y-ly);if(d<bd2){bd2=d;best=m}}
+          if(best){best.tx=lx;best.ty=ly;best.sprint=bd2>5;best.lane=true;pressing.add(best)}}}
+      const marked=new Set();const kMark=[.25,.55,.85][O.tac.press??1];// (18) pressão baixa = marcação por zona; alta = individual
       for(const m of this.active(O)){if(pressing.has(m)||O.slots[m.si].role==='GOL')continue;
-        let best=null,bd=9;for(const a of atts){const d=hyp(a.x-m.tx,a.y-m.ty);if(d<bd){bd=d;best=a}}
-        if(best){const ux=og-best.x,uy=W/2-best.y,ul=hyp(ux,uy)||1;const gx=best.x+ux/ul*1.6,gy=best.y+uy/ul*1.6;const k=.55*(O.slots[m.si].df.d<.3?1:.8);m.tx=m.tx*(1-k)+gx*k;m.ty=m.ty*(1-k)+gy*k}}
+        let best=null,bd=9;for(const a of atts){if(marked.has(a))continue;const d=hyp(a.x-m.tx,a.y-m.ty);if(d<bd){bd=d;best=a}}// (20) ninguém marca o mesmo atacante em dupla
+        if(best)marked.add(best);
+        if(m.cover!=null){m.ty=m.ty+(m.cover-m.ty)*.35;m.cover=null}
+        if(best){const ux=og-best.x,uy=W/2-best.y,ul=hyp(ux,uy)||1;const gx=best.x+ux/ul*1.6,gy=best.y+uy/ul*1.6;const k=kMark*(O.slots[m.si].df.d<.3?1:.8)*(O.slots[m.si].role==='VOL'?.6:1);m.tx=m.tx*(1-k)+gx*k;m.ty=m.ty*(1-k)+gy*k}
+        // a marcação não desmancha o bloco: zagueiro acompanha de lado, mas fica perto da linha; meio-campo dentro da faixa do meio
+        if(O._line!=null){const r=O.slots[m.si].role,dd=depth(m.tx,O.side),ln=O._line;
+          if(r==='ZAG'||r==='LD'||r==='LE')m.tx=toX(clamp(dd,ln-.015,ln+(O.tac.press===2?.07:.025)),O.side);
+          else if(r==='VOL'||r==='MC'||r==='MEI')m.tx=toX(clamp(dd,ln+.04,ln+(O.tac.press===2?.2:.16)),O.side)}}
       // linhas de passe: quem está sem a bola procura espaço
-      if(this.tick%8===0)for(const m of atts){if(A.slots[m.si].role==='GOL')continue;
+      if(this.tick%6===0){const bdA=depth(car.x,car.side);const sup=new Set(atts.filter(m=>{const r=A.slots[m.si].role;return r!=='GOL'&&!(r==='ATA'&&bdA>.4)&&!(m.runUntil>tt)&&!(m.ovUntil>tt)}).map(m=>({m,d:hyp(m.x-car.x,m.y-car.y)})).filter(x=>x.d<30).sort((a,b)=>a.d-b.d).slice(0,3).map(x=>x.m));const taken=[];
+        const OFF=[[0,0],[4,0],[-4,0],[0,4],[0,-4],[3,3],[-3,3],[3,-3],[-3,-3]],OFF2=OFF.concat([[7,0],[-7,0],[0,7],[0,-7],[5,5],[-5,5],[5,-5],[-5,-5]]);
+        for(const m of atts){if(A.slots[m.si].role==='GOL')continue;const isS=sup.has(m);
         let bx=0,by=0,bv=-1e9;
-        for(const [ox,oy] of [[0,0],[4,0],[-4,0],[0,4],[0,-4],[3,3],[-3,3],[3,-3],[-3,-3]]){const x=clamp(m.tx+ox,1,L-1),y=clamp(m.ty+oy,1,W-1);
+        const wing=(A.slots[m.si].role==='PD'||A.slots[m.si].role==='PE')&&bdA<.74;
+        for(const [ox,oy] of (isS?OFF2:OFF)){const x=clamp(m.tx+ox,1,L-1),y=clamp(m.ty+oy,1,W-1);if(wing&&Math.abs(y-W/2)<Math.abs(m.ty-W/2)-1.5)continue;
           let open=10;for(const o of this.active(O)){const d=hyp(o.x-x,o.y-y);if(d<open)open=d}
           let lane=6;for(const o of this.active(O)){const sd=segDist(o.x,o.y,car.x,car.y,x,y);if(sd.t>.05&&sd.t<.95&&sd.d<lane)lane=sd.d}
-          const dc=hyp(x-car.x,y-car.y);const v=open*.6+lane*.8-hyp(ox,oy)*.25-(dc<6?4:0);if(v>bv){bv=v;bx=ox;by=oy}}
-        m.sx=bx;m.sy=by}
-      for(const m of atts){if(m.sx!=null){m.tx=clamp(m.tx+m.sx,1,L-1);m.ty=clamp(m.ty+m.sy,1,W-1)}}
+          const dc=hyp(x-car.x,y-car.y);let v=open*.6+lane*.8-hyp(ox,oy)*.25-(dc<6?4:0);
+          // (1) apoio: os 3 mais próximos querem estar a 8-20 m, com linha de passe limpa e sem amontoar
+          if(isS){v+=(dc>=8&&dc<=20?3:0)+(lane>2.5?2.5:0);for(const [tx,ty] of taken)if(hyp(x-tx,y-ty)<6)v-=4}
+          if(v>bv){bv=v;bx=ox;by=oy}}
+        m.sx=bx;m.sy=by;m.sup=isS;if(isS)taken.push([clamp(m.tx+bx,1,L-1),clamp(m.ty+by,1,W-1)])}}
+      for(const m of atts){if(m.sx!=null){m.tx=clamp(m.tx+m.sx,1,L-1);m.ty=clamp(m.ty+m.sy,1,W-1);if(m.sup&&hyp(m.tx-m.x,m.ty-m.y)>4)m.sprint=true}}// apoio chega rápido
       // portador
       if(car.ko||car.setP||car.throwIn){car.tx=car.x;car.ty=car.y;car.sprint=false;car.drib=null;// cobrador parado: só pode tocar a bola
         if(car.ko)for(const m of this.active(O)){const dx=m.tx-L/2,dy=m.ty-W/2,dd=hyp(dx,dy)||1;if(dd<9.6){m.tx=L/2+dx/dd*9.6;m.ty=W/2+dy/dd*9.6}if((m.tx-L/2)*(ownGoalX(O.side)-L/2)<0)m.tx=L/2+(ownGoalX(O.side)>L/2?1:-1)*.5;m.press=false;m.sprint=false}}
@@ -183,8 +229,26 @@ class Match{
       for(const T of this.T){let best=null,bd=1e9;for(const m of this.active(T)){const d=hyp(m.x-b.x,m.y-b.y)/this.spd(m);if(d<bd){bd=d;best=m}}if(best){best.tx=b.x+b.vx*.3;best.ty=b.y+b.vy*.3;best.sprint=true}}
       const g=this.gk(this.T[b.x<L/2?0:1]);if(g&&hyp(g.x-b.x,g.y-b.y)<12&&Math.abs(b.x-ownGoalX(g.side))<16.5){g.tx=b.x;g.ty=b.y;g.sprint=true}
     }
-    for(const T of this.T)for(const m of this.active(T))if(m!==b.own)m.press=m.press&&b.st==='own';
+    for(const T of this.T)for(const m of this.active(T)){if(m!==b.own)m.press=m.press&&b.st==='own';m.lane=false}
   }
+  // (13) linha de 4 em bloco e (8) time compacto: as linhas andam juntas
+  shapeTeam(T,att,bd,lastDef){const s=T.side;const out=this.active(T).filter(m=>T.slots[m.si].role!=='GOL');if(!out.length)return;
+    const role=m=>T.slots[m.si].role,isDef=m=>['ZAG','LD','LE'].includes(role(m)),isMid=m=>['VOL','MC','MEI'].includes(role(m)),isFwd=m=>['ATA','PD','PE'].includes(role(m));
+    const defs=out.filter(isDef);const set=(m,td)=>{td=clamp(td,.015,.97);m._td=td;m.tx=toX(td,s)};
+    T._line=null;
+    if(!att){
+      if(defs.length>=3){const zs=defs.filter(m=>role(m)==='ZAG');const base=(zs.length?zs:defs);let line=base.reduce((a,m)=>a+m._td,0)/base.length;
+        const tac=T.tac,low=(tac.line===0)||((tac.ment||0)<0);if(low)line=Math.min(line,.15);// (21) retranca: bloco baixo perto da área
+        // (14) linha de impedimento: sobe junto quando o adversário recua a bola
+        const b=this.ball;if(!low&&b.st==='own'&&b.own.side!==s){const dirO=b.own.side===0?1:-1;if(b.own.vx*dirO<-1.2)line+=.045}
+        if(!low&&b.st==='fly'&&b.fly.side!==s&&b.fly.kind==='pass'){const dirO=b.fly.side===0?1:-1;if((b.fly.tx-b.fly.fx)*dirO<-3)line+=.05}
+        if(low)for(const m of out)m.ty=W/2+(m.ty-W/2)*.82;
+        T._line=line;for(const m of defs){if(m.press)continue;const fb=role(m)!=='ZAG';set(m,line+(fb?.012:0))}
+        for(const m of out){if(m.press||m.lane)continue;if(isMid(m))set(m,clamp(m._td,line+.05,role(m)==='VOL'?line+.1:line+.15));else if(isFwd(m))set(m,Math.min(m._td,line+(role(m)==='ATA'?.33:.25)))}}
+    }else{
+      // atacando: a defesa acompanha a subida (sem deixar buraco entre as linhas)
+      for(const m of out){if(isDef(m)&&!(m.runUntil>this.t))set(m,Math.max(m._td,bd-.44));else if(isMid(m)&&!(m.runUntil>this.t))set(m,Math.max(m._td,bd-.3))}
+    }}
   celeTargets(){// comemoração: o autor corre para a bandeirinha e os companheiros vão abraçá-lo
     const g=this.goalCele,sc=g.mp,T=this.T[g.side];if(!g.cx){const gx=goalX(sc.side);g.cx=gx+(gx>L/2?-1.5:1.5);g.cy=sc.y<W/2?1.5:W-1.5}
     sc.tx=g.cx;sc.ty=g.cy;sc.sprint=true;
@@ -195,17 +259,28 @@ class Match{
     if(sp.kind==='ko'){for(const T of this.T)for(const m of this.active(T)){if(m.koX==null)continue;m.tx=m.koX;m.ty=m.koY;m.sprint=hyp(m.x-m.koX,m.y-m.koY)>8}return}
     if(sp.kind==='corner'){const A=this.T[sp.side],O=this.T[1-sp.side];const gx=goalX(sp.side);const dir=sp.side===0?-1:1;
       const big=this.active(A).filter(m=>A.slots[m.si].role!=='GOL'&&m!==sp.taker).sort((a,b)=>b.a.cab-a.a.cab).slice(0,5);
-      big.forEach((m,i)=>{m.tx=gx+dir*(6+(i%3)*3.5);m.ty=W/2+(i-2)*4});
+      big.forEach((m,i)=>{m.tx=gx+dir*(6+(i%3)*3.5)+Math.sin(this.t*1.1+i*1.7)*1.4;m.ty=W/2+(i-2)*4+Math.cos(this.t*.9+i)*1.6});// (24) se mexem antes da cobrança
       const defs=this.active(O).filter(m=>O.slots[m.si].role!=='GOL').sort((a,b)=>b.a.cab-a.a.cab).slice(0,6);
       defs.forEach((m,i)=>{const t=big[i%big.length];m.tx=t.tx+dir*-1.2;m.ty=t.ty+(i>=big.length?2:0)});
+      // (23) um defensor em cada trave
+      const posts=this.active(O).filter(m=>O.slots[m.si].role!=='GOL'&&!defs.includes(m)).sort((a,b)=>hyp(a.x-gx,a.y-W/2)-hyp(b.x-gx,b.y-W/2)).slice(0,2);
+      posts.forEach((m,i)=>{m.tx=gx-dir*-.7;m.ty=W/2+(i?3.4:-3.4)});
       if(sp.taker){sp.taker.tx=sp.x+(sp.x<L/2?-.6:.6);sp.taker.ty=sp.y+(sp.y<W/2?-.5:.5);sp.taker.sprint=true}
       const g2=this.gk(O);if(g2){g2.tx=gx+(sp.side===0?-.6:.6);g2.ty=W/2+(sp.y<W/2?-1.5:1.5)}
     }else if(sp.kind==='pen'){const gx=goalX(sp.side);for(const T of this.T)for(const m of this.active(T)){if(m===sp.taker){m.tx=sp.x-(sp.side===0?1:-1);m.ty=W/2;continue}
         if(T.slots[m.si].role==='GOL'&&T.side!==sp.side){m.tx=gx;m.ty=W/2;continue}if(Math.abs(m.tx-gx)<18){m.tx=gx+(sp.side===0?-19:19)}}}
+    else if(sp.kind==='lateral'&&sp.taker){// (26) lateral: dois companheiros se aproximam para receber curto
+      const A=this.T[sp.taker.side];const near=this.active(A).filter(m=>m!==sp.taker&&A.slots[m.si].role!=='GOL').sort((a,b)=>hyp(a.x-sp.x,a.y-sp.y)-hyp(b.x-sp.x,b.y-sp.y)).slice(0,2);
+      const into=sp.y<W/2?1:-1;near.forEach((m,i)=>{m.tx=clamp(sp.x+(i?-7:7),2,L-2);m.ty=clamp(sp.y+into*(i?9:5),1,W-1)});
+      sp.taker.tx=sp.x;sp.taker.ty=sp.y;sp.taker.sprint=true}
     else if(sp.kind==='tiro'&&sp.taker){// tiro de meta: o goleiro se afasta uns passos e vem correndo para bater
-      const g=sp.taker,dir=sp.x<L/2?1:-1,run=this.dead>.8;g.tx=run?sp.x-dir*3:sp.x-dir*.3;g.ty=run?sp.y-1.4:sp.y-.15;g.sprint=run&&hyp(g.x-g.tx,g.y-g.ty)>5}
+      const g=sp.taker,dir=sp.x<L/2?1:-1,run=this.dead>.8;
+      // (27) zagueiros abrem nos cantos da área para a saída curta
+      {const T=this.T[g.side];this.active(T).filter(m=>T.slots[m.si].role==='ZAG').slice(0,2).forEach((m,i)=>{m.tx=sp.x+dir*12;m.ty=W/2+(i?14:-14)})}g.tx=run?sp.x-dir*3:sp.x-dir*.3;g.ty=run?sp.y-1.4:sp.y-.15;g.sprint=run&&hyp(g.x-g.tx,g.y-g.ty)>5}
     else if(sp.taker){sp.taker.tx=sp.x;sp.taker.ty=sp.y;sp.taker.sprint=true}
-    if(sp.kind==='falta'&&sp.taker){const O=this.T[1-sp.taker.side];for(const m of this.active(O)){const dx=m.tx-sp.x,dy=m.ty-sp.y,d=hyp(dx,dy)||1;if(d<9.3){m.tx=clamp(sp.x+dx/d*9.3,.5,L-.5);m.ty=clamp(sp.y+dy/d*9.3,.5,W-.5)}}}
+    if(sp.kind==='falta'&&sp.taker){const A=this.T[sp.taker.side],dep=depth(sp.x,A.side);
+      if(dep>.68&&Math.abs(sp.y-W/2)>12){const gx=goalX(A.side),dir=A.side===0?-1:1;// (25) falta lateral: cabeceadores na área
+        this.active(A).filter(m=>m!==sp.taker&&A.slots[m.si].role!=='GOL').sort((a,b)=>b.a.cab-a.a.cab).slice(0,4).forEach((m,i)=>{m.tx=gx+dir*(7+(i%2)*4);m.ty=W/2+(i-1.5)*4.5})}const O=this.T[1-sp.taker.side];for(const m of this.active(O)){const dx=m.tx-sp.x,dy=m.ty-sp.y,d=hyp(dx,dy)||1;if(d<9.3){m.tx=clamp(sp.x+dx/d*9.3,.5,L-.5);m.ty=clamp(sp.y+dy/d*9.3,.5,W-.5)}}}
   }
   separate(){// corpos não se atravessam: quem fica a menos de 0,7 m é afastado (o dono da bola cede menos)
     const all=[];for(const T of this.T)for(const m of this.active(T))all.push(m);const own=this.ball.own;
@@ -216,7 +291,9 @@ class Match{
       if(m.frozen>0){m.frozen-=dt;const fr=m.slideT!=null&&this.t-m.slideT<.6?.93:m.kwT!=null&&this.t-m.kwT<.35?.9:.85;m.vx*=fr;m.vy*=fr;m.x+=m.vx*dt;m.y+=m.vy*dt;continue}
       const dx=m.tx-m.x,dy=m.ty-m.y,d=hyp(dx,dy);const own=this.ball.own===m;
       if(own&&(m.ko||m.setP||m.throwIn)){m.vx=m.vy=0;continue}// cobrador parado esperando para tocar
-      let v=this.spd(m)*(m.sprint||d>8?1:d>3?.78:.45)*(own?.86:1);
+      // (28) ritmo de deslocamento: perto do lance corre; longe dele trota/anda para se reposicionar
+      const dB=hyp(m.x-this.ball.x,m.y-this.ball.y),nearB=dB<30;if(m.sprint&&!own&&m.stam<58&&dB>22&&!m.press)m.sprint=false;// (29) cansado não dispara longe do lance
+      let v=this.spd(m)*(m.sprint?1:d>12?.95:d>6?(nearB?.9:.78):d>2.5?(nearB?.68:.55):.38)*(own?.86:1);
       const want=d<.25?0:Math.min(v,d*3);const ux=d?dx/d:0,uy=d?dy/d:0;
       const ak=Math.min(1,dt*this.acc(m));m.vx+=(ux*want-m.vx)*ak;m.vy+=(uy*want-m.vy)*ak;
       m.x=clamp(m.x+m.vx*dt,-.6,L+.6);m.y=clamp(m.y+m.vy*dt,-.6,W+.6);
@@ -297,7 +374,11 @@ class Match{
       if(c.length){const o=c[0];return this.pass(m,o.q,.95,0,o.d)}m.throwIn=false}
     if(m.setP){m.setP=false;// bola parada: a cobrança tem que ser passe (ou chute) — o cobrador não pode sair conduzindo
       const T0=this.T[m.side],md0=depth(m.x,m.side);const c=this.active(T0).filter(q=>q!==m&&T0.slots[q.si].role!=='GOL').map(q=>({q,d:hyp(q.x-m.x,q.y-m.y),f:depth(q.x,m.side)-md0})).filter(o=>o.d>6&&o.d<40&&this.nearestOpp(o.q).d>2.5).sort((a,b)=>(b.f*30-b.d*.15+rnd(-4,4))-(a.f*30-a.d*.15+rnd(-4,4)));
-      if(m.gkKick){m.gkKick=false;if(!c.length||R()<.45)return this.clear(m)}
+      if(m.gkKick){m.gkKick=false;
+        // (27) saída curta com os zagueiros abertos (time que gosta de tocar sai jogando mais)
+        const sh=c.filter(o=>o.d<24&&['ZAG','LD','LE','VOL'].includes(T0.slots[o.q.si].role)).sort((a,b)=>a.d-b.d);
+        if(sh.length&&R()<[.3,.55,.35][T0.tac.pass??1]){const o=sh[0];return this.pass(m,o.q,.95,0,o.d)}
+        if(!c.length||R()<.45)return this.clear(m)}
       const o=c[0]||this.active(T0).filter(q=>q!==m).map(q=>({q,d:hyp(q.x-m.x,q.y-m.y)})).sort((a,b)=>a.d-b.d)[0];if(o)return this.pass(m,o.q,.95,0,o.d)}
     if(m.ko){m.ko=false;// saída de bola: toca para trás/lado, como no futebol de verdade
       const T0=this.T[m.side],md0=depth(m.x,m.side);const c=this.active(T0).filter(q=>q!==m&&T0.slots[q.si].role!=='GOL'&&depth(q.x,m.side)<md0-.02).map(q=>({q,d:hyp(q.x-m.x,q.y-m.y)})).filter(o=>o.d>6&&o.d<28).sort((a,b)=>a.d-b.d+rnd(-4,4));
@@ -308,7 +389,7 @@ class Match{
     const T=this.T[m.side],O=this.T[1-m.side],tac=T.tac;const isGk=T.slots[m.si].role==='GOL';const sl=T.slots[m.si];const fn=C.fnOf(sl.role,sl.fn);
     const press=this.nearestOpp(m).d;const gx=goalX(m.side);const dG=hyp(gx-m.x,W/2-m.y);const md=depth(m.x,m.side);
     const nz=1.4-(m.a.dec||10)/20*.8;const style=tac.pass??1,tempo=tac.tempo??1,ment=tac.ment||0;
-    let best={k:'hold',v:.12+nz*rnd(0,.05)};
+    let best={k:'hold',v:.12+nz*rnd(0,.05)};let safe=null;
     // finalizar
     if(!isGk&&dG<32){const g=this.shotGeom(m.x,m.y,m.side);const pf=press<1?.6:press<2.5?.8:press<4?.92:1;
       const est=g.base*pf*this.gkFactor(m.x,m.y,m.side)*(.6+this.shotSkill(m,dG)/20*.7);
@@ -322,7 +403,10 @@ class Match{
       const ps=clamp(.97-d*.006*(1.4-m.a.pas/20)-risk*.6-(press<2?.06:0)-(1-open)*.15,.05,.97);
       let val=ps*(.34+prog*(1.6+style*.35+tempo*.18+(fn.build?.25:0))+open*.22+(qd>.72?.3:0)+(qd>.7&&Math.abs(lat(q.y,m.side)-.5)<.25?.12:0));
       if(style===0&&d>22)val*=.8;if(qIsGk)val*=press<3?.7:.3;if(prog<-.15&&press>5)val*=.75;
+      if(q.wallUntil>this.t&&q.wallTo===m&&prog>0)val+=.28*ps;// (2) devolve na tabela
+      if(sl.role==='ATA'&&press<1.8&&prog<0&&d<14)val+=.15;// (7) pivô: segura de costas e escora para quem vem de trás
       val+=nz*rnd(0,.07);
+      if(ps>.85&&prog>-.12&&(!safe||val>safe.v))safe={k:'pass',v:val,q,ps,risk,d};
       if(val>best.v)best={k:'pass',v:val,q,ps,risk,d}}
     // passe em profundidade (nas costas da defesa)
     if(!isGk&&md>.3){const dir=m.side===0?1:-1;let lastDef=0;for(const o of this.active(O))if(O.slots[o.si].role!=='GOL')lastDef=Math.max(lastDef,depth(o.x,m.side));
@@ -344,6 +428,8 @@ class Match{
     // afastar
     if(md<.22&&press<2.2&&!isGk){const v=.55;if(v>best.v)best={k:'clear',v}}
     if(isGk&&best.k==='hold'){best={k:'clear',v:1}}
+    // (12) paciência: sem espaço para frente, troca passe seguro em vez de forçar
+    if(safe&&(best.k==='pass'||best.k==='thru')&&best.ps<.55&&md<.66&&safe.v>=best.v*.62&&(tac.tempo??1)<2)best=safe;
     m.drib=null;
     if(best.k==='shot')return this.shoot(m);
     if(best.k==='pass')return this.pass(m,best.q,best.ps,best.risk,best.d);
@@ -361,6 +447,8 @@ class Match{
     const T=this.T[m.side],O=this.T[1-m.side];T.st.pa++;m.s.pa++;m.kt=this.t;if(this.opts.sound)this.opts.sound('pass',m);
     const isGkP=T.slots[m.si].role==='GOL'&&this.ball.st==='own';
     const lead=.35;let tx=pt?pt.x:q.x+(q.tx-q.x)*lead*.3,ty=pt?pt.y:q.y+(q.ty-q.y)*lead*.3;tx=clamp(tx,.5,L-.5);ty=clamp(ty,.5,W-.5);
+    if(!pt&&!m.throwIn&&!m.setP&&!isGkP&&d<22&&this.nearestOpp(m).d>2&&depth(m.x,m.side)>.3&&R()<.3+((m.a.vis||10)-10)*.02){const dir=m.side===0?1:-1;
+      m.wallUntil=this.t+1.9;m.wallTo=q;m.wallX=clamp(m.x+dir*rnd(9,14),2,L-2);m.wallY=clamp(m.y+(q.y-m.y)*.25+(W/2-m.y)*.15,3,W-3)}// (2) tabela
     const wasThrow=!!m.throwIn;const lofted=pt?d>30:(d>27||(risk>.45&&d>15));m.kk=m.throwIn?'throw':isGkP&&d<32&&!pt&&m.gkHold?'gthrow':lofted?'long':'pass';m.throwIn=false;m.gkHold=false;
     const speed=lofted?15.5:d<15?17:19;let dur=d/speed+(lofted?.25:.05);
     const press=this.nearestOpp(m).d;
