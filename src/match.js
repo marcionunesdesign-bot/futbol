@@ -313,9 +313,11 @@ class Match{
       const into=sp.y<W/2?1:-1;near.forEach((m,i)=>{m.tx=clamp(sp.x+(i?-7:7),2,L-2);m.ty=clamp(sp.y+into*(i?9:5),1,W-1)});
       sp.taker.tx=sp.x;sp.taker.ty=sp.y;sp.taker.sprint=true}
     else if(sp.kind==='tiro'&&sp.taker){// tiro de meta: o goleiro se afasta uns passos e vem correndo para bater
-      const g=sp.taker,dir=sp.x<L/2?1:-1,run=this.dead>.8;
+      const g=sp.taker,dir=sp.x<L/2?1:-1,run=this.dead>.85;
       // (27) zagueiros abrem nos cantos da área para a saída curta
-      {const T=this.T[g.side];this.active(T).filter(m=>T.slots[m.si].role==='ZAG').slice(0,2).forEach((m,i)=>{m.tx=sp.x+dir*12;m.ty=W/2+(i?14:-14)})}g.tx=run?sp.x-dir*3:sp.x-dir*.3;g.ty=run?sp.y-1.4:sp.y-.15;g.sprint=run&&hyp(g.x-g.tx,g.y-g.ty)>5}
+      {const T=this.T[g.side];this.active(T).filter(m=>T.slots[m.si].role==='ZAG').slice(0,2).forEach((m,i)=>{m.tx=sp.x+dir*12;m.ty=W/2+(i?14:-14)})}g.tx=run?sp.x-dir*3.2:sp.x-dir*.35;g.ty=run?sp.y-1.5:sp.y-.2;
+      /* corrida para a bola: sai uns 0,85 s antes e chega no ritmo certo, sem aparecer na bola do nada */
+      if(run)g.sprint=hyp(g.x-g.tx,g.y-g.ty)>5;else{const d=hyp(g.x-g.tx,g.y-g.ty);g.sprint=d>.6;g.runInV=clamp(d/Math.max(.25,this.dead-.05),2,7)}}
     else if(sp.taker){sp.taker.tx=sp.x;sp.taker.ty=sp.y;sp.taker.sprint=true}
     if(sp.kind==='falta'&&sp.taker){const A=this.T[sp.taker.side],dep=depth(sp.x,A.side);
       if(dep>.68&&Math.abs(sp.y-W/2)>12){const gx=goalX(A.side),dir=A.side===0?-1:1;// (25) falta lateral: cabeceadores na área
@@ -333,7 +335,7 @@ class Match{
       // (28) ritmo de deslocamento: perto do lance corre; longe dele trota/anda para se reposicionar
       const dB=hyp(m.x-this.ball.x,m.y-this.ball.y),nearB=dB<30;if(m.sprint&&!own&&m.stam<58&&dB>22&&!m.press)m.sprint=false;// (29) cansado não dispara longe do lance
       let v=this.spd(m)*(m.sprint?1:d>12?.95:d>6?(nearB?.9:.78):d>2.5?(nearB?.68:.55):.38)*(own?.86:1)*(m.slowUntil>this.t?.35:1);
-      const want=d<.25?0:Math.min(v,d*3);const ux=d?dx/d:0,uy=d?dy/d:0;
+      const want=d<.25?0:Math.min(v,d*3,this.dead>0&&this.setup&&this.setup.taker===m&&m.runInV&&this.dead<.9?m.runInV:99);const ux=d?dx/d:0,uy=d?dy/d:0;
       let ak=Math.min(1,dt*this.acc(m));const sp0=hyp(m.vx,m.vy);
       if(sp0>3.5&&want>.5){const dot=(m.vx*ux+m.vy*uy)/sp0;/* (12) inércia: em velocidade, virar e frear custa; agilidade e drible ajudam */
         if(dot<.75){const ag=((m.a.ace||10)/20)*.28+((m.a.dri||10)/20)*.14;ak*=clamp(.42+ag+(dot+1)*.14,.42,1)}
@@ -410,7 +412,7 @@ class Match{
     this.setDead(kind==='falta'?1.1:kind==='lateral'?1.3:.9,()=>{best.x=x;best.y=y;this.give(best,true);if(kind==='lateral')best.throwIn=true;else best.setP=true;best.decide=this.t+(kind==='lateral'?.6:.25)},{kind,taker:best,x,y});this.ball.x=x;this.ball.y=y;
   }
   goalKick(side){const g=this.gk(this.T[side]);const x=side===0?5.5:L-5.5;this.ball.x=x;this.ball.y=W/2;
-    this.setDead(2.1,()=>{g.x=x-(side===0?.3:-.3);g.y=W/2-.15;g.vx=g.vy=0;this.give(g,true);g.setP=true;g.gkKick=true;g.decide=this.t+.02},{kind:'tiro',taker:g,x,y:W/2})}// tiro de meta: o goleiro bate de primeira (passe ou chutão), sem conduzir
+    this.setDead(2.6,()=>{g.x=x-(side===0?.3:-.3);g.y=W/2-.15;g.vx=g.vy=0;this.give(g,true);g.setP=true;g.gkKick=true;g.decide=this.t+.02},{kind:'tiro',taker:g,x,y:W/2})}// tiro de meta: o goleiro bate de primeira (passe ou chutão), sem conduzir
   corner(side,top){const x=side===0?L-.4:.4,y=top?.4:W-.4;this.T[side].st.co++;this.ev('corner',side,fill(pick(TXT.corner),{t:this.T[side].name}));
     const A=this.T[side];const taker=this.taker(A,'ck');
     this.ball.x=x;this.ball.y=y;this.ball.z=0;this.setDead(2.8,()=>this.cross(taker,side,x,y),{kind:'corner',side,taker,x,y});}
@@ -610,7 +612,7 @@ class Match{
       if(R()<pS){o.s.tk++;o.r+=.12;O.st.tk++;car.r-=.06;o.fx={k:'desarme',t:this.t};
         this.narr(slide?'carrinho':'desarme',o.side,{p:o.p.n,q:car.p.n,pid:o.id});
         if(slide){this.slideOf(o,car);const b=this.ball;b.st='loose';b.own=null;const a=Math.atan2(car.y-o.y,car.x-o.x)+rnd(-.6,.6);b.vx=Math.cos(a)*rnd(4,7);b.vy=Math.sin(a)*rnd(4,7);this.lastTouch=o.side}
-        else{o.anim={k:'shoulder',t:this.t};car.anim={k:'stumble',t:this.t};if(R()<.62){this.give(o)}else{const b=this.ball;b.st='loose';b.own=null;b.vx=rnd(-4,4);b.vy=rnd(-4,4);this.lastTouch=o.side}}
+        else{o.anim={k:'shoulder',t:this.t};car.anim={k:R()<.3?'lament':'stumble',t:this.t};/* (13) reação de quem perde a bola */if(R()<.62){this.give(o)}else{const b=this.ball;b.st='loose';b.own=null;b.vx=rnd(-4,4);b.vy=rnd(-4,4);this.lastTouch=o.side}}
         car.frozen=.35;return}
       else{o.frozen=.75;car.r+=.04;car.fx={k:'drible',t:this.t};if(slide)this.slideOf(o,car);else o.anim={k:'beaten',t:this.t}}
     }

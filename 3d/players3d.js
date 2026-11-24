@@ -133,6 +133,7 @@ export function makePlayer(o){
   /* ossos sujeitos ao limitador (todos menos dedos) e estado do relógio visual */
   const GB=['pelvis','spine_02','foot_l','foot_r','calf_l','calf_r','hand_l','hand_r','Head','upperarm_l','upperarm_r'];const gv=new T.Vector3();
   const SPN=['spine_01','spine_02','spine_03'];const sq=new T.Quaternion();
+  const ikT=new T.Vector3(),ikH=new T.Vector3();
   const REST=new Map();for(const k in B)REST.set(B[k],B[k].quaternion.clone());/* pose de repouso de cada osso */
   const LB=Object.values(B).filter(b=>!/_0[123]_|thumb|index|middle|ring|pinky/.test(b.name));const PQ=new Map();let spKey=null,spR=0;
   // mão relaxada: dedos levemente dobrados (o modelo vem de mão espalmada)
@@ -246,6 +247,7 @@ export function makePlayer(o){
     if(lw>0){
       if(p.back&&sp>.4&&A.back){const m=MX[A.back];const v=Math.max(.8,Math.abs(m.v));lpPh.b=((lpPh.b||0)+dt*sp/(v*m.dur))%1;P(A.back,lw,lpPh.b*m.dur)}
       else if(p.side&&sp>.4&&(A.strL||A.strR)){const n=p.side>0?A.strL:A.strR;const m=MX[n];lpPh.s=((lpPh.s||0)+dt*sp/(Math.max(.8,Math.abs(m.v||2))*m.dur))%1;P(n,lw,lpPh.s*m.dur)}
+      else if(p.own&&p.slow&&sp>.35&&!p.noDrib){/* condução devagar: passadas curtas de trote, tronco em cima da bola */const c=sp<1.5?A.walk:A.jog;const m=MX[c];const st=(c===A.walk?1.8:2.02)*.78;lpPh.c=((lpPh.c||0)+dt*sp/st)%1;P(c,lw,lpPh.c*m.dur);if(A.drib&&sp>1.6){P(A.drib,lw*Math.max(0,Math.min(.6,sp-1.6)),((lpPh.c*1.1)%1)*MX[A.drib].dur)}}
       else if(p.own&&sp>.8&&sp<6.2&&A.drib&&!p.noDrib){// conduzindo a bola: corrida com toques (mistura com o sprint quando acelera)
         const m=MX[A.drib];const dw=Math.max(0,Math.min(1,(5.6-sp)/.6));lpPh.d=((lpPh.d||0)+dt*sp/(4.37*(p.stride||1)))%1;P(A.drib,lw*dw,lpPh.d*m.dur);
         if(dw<1&&A.sprint){phase=(phase+dt*sp/(2.99*(p.stride||1)))%1;P(A.sprint,lw*(1-dw),phase*MX[A.sprint].dur)}}
@@ -269,7 +271,15 @@ export function makePlayer(o){
     // ---------- ajustes finos por cima ----------
     const calm=!!p.cele;// comemorando: sem camadas procedurais (nada de torcer cintura)
     if(p.lean&&!calm)body.rotation.z=p.lean*.35;
-    if(p.acc&&!calm&&!special&&!p.dive&&!kw&&lw>.5&&sp<6){const a=Math.max(-.05,Math.min(.07,p.acc*.012))*Math.min(1,sp/2);body.rotation.x=a}
+    if(p.acc&&!calm&&!special&&!p.dive&&!kw&&lw>.5&&sp<6){const a=Math.max(-.11,Math.min(.07,p.acc*.014))*Math.min(1,sp/2);body.rotation.x=a}/* (3) freada joga o corpo para trás */
+    if(p.style&&!calm&&!special&&!p.dive&&!p.gkA&&!kw&&lw>.5){const S=p.style;const run=Math.max(0,Math.min(1,(sp-2.4)/3.2));const trot=Math.max(0,1-Math.abs(sp-2.6)/1.4);
+      /* corrida forte: tronco à frente e braços tocando; trote: solto e com leve balanço; pesado: ombros balançam */
+      rot('spine_01',[[X,S.lean*run+(p.tired||0)*.12*Math.min(1,sp/2)]]);const sw=Math.sin(phase*6.283);rot('upperarm_l',[[X,-sw*.22*run*S.arm]]);rot('upperarm_r',[[X,sw*.22*run*S.arm]]);
+      rot('spine_02',[[Z,sw*.05*(S.heavy*run+trot*.4)]]);if(p.own&&p.slow)rot('spine_01',[[X,.08]])}
+    if(p.rest&&!kw&&!special&&!p.gkA){/* (14) cansado na parada: tronco curvado, cabeça baixa */rot('spine_01',[[X,.22*p.rest]]);rot('spine_02',[[X,.16*p.rest]]);rot('Head',[[X,.25*p.rest]])}
+    if(p.tk&&!kw&&!special){/* toque visível na bola: o pé dá um pequeno chute curto */const e=Math.sin(Math.min(1,p.tk.a/.22)*Math.PI);rot('calf_'+p.tk.l,[[X,-.35*e]]);rot('thigh_'+p.tk.l,[[X,-.18*e]])}
+    if(p.shield&&!kw&&!special){const s=p.shield.s,k=p.shield.k;const sd=s>0?'r':'l';rot('upperarm_'+sd,[[Z,(s>0?-1:1)*.55*k]]);rot('lowerarm_'+sd,[[Y,.3*k]])}
+    if(p.plant&&!kw&&!special){const e=Math.sin(Math.min(1,p.plant.a/.32)*Math.PI);body.rotation.z+=-p.plant.s*.14*e;body.position.y-=.06*e}
     // virada: tronco e cabeça entram na curva antes das pernas; em giro brusco o corpo abaixa
     // (sem torção de tronco, agachada na virada ou freada procedural: só os movimentos capturados, sem distorcer a cintura)
     if(p.hold&&!p.dive){rot('upperarm_l',[[Z,-.4],[Y,-.5]]);rot('upperarm_r',[[Z,.4],[Y,.5]]);rot('lowerarm_l',[[Y,-1.1]]);rot('lowerarm_r',[[Y,1.1]])}
@@ -293,6 +303,9 @@ export function makePlayer(o){
       for(const b of LB){const q=b.quaternion;let pq=PQ.get(b);if(!pq){PQ.set(b,q.clone());continue}
         const d=Math.min(1,Math.abs(pq.x*q.x+pq.y*q.y+pq.z*q.z+pq.w*q.w));const ang=2*Math.acos(d);
         if(ang>mx){pq.slerp(q,mx/ang);q.copy(pq)}else pq.copy(q)}}
+    if(p.gkA&&p.gkA.tw&&p.gkA.out==='save'){/* defesa: a mão mais próxima vai até o ponto onde a bola chega (o corpo acompanha) */const g=p.gkA;const pre=g.pre*g.pre*(3-2*g.pre);const w=pre*Math.max(0,1-Math.max(0,g.post-.25)/.6);
+      if(w>.01){root.updateMatrixWorld(true);ikT.set(g.tw[0],g.tw[1],g.tw[2]);root.worldToLocal(ikT);let best=null,bd=1e9;for(const n of ['hand_l','hand_r']){const b=B[n];if(!b)continue;b.getWorldPosition(ikH);root.worldToLocal(ikH);const d=ikH.distanceTo(ikT);if(d<bd){bd=d;best=ikH.clone()}}
+        if(best){ikT.sub(best);const L2=ikT.length(),mxL=1.3/Math.max(.5,root.scale.x);if(L2>mxL)ikT.multiplyScalar(mxL/L2);ikT.y=Math.max(ikT.y,-body.position.y);body.position.addScaledVector(ikT,w)}}}
   }
   function legacy(p,t,dt,sp){let spAnim=sp;
     const special=p.anim&&p.anim.k;let locoW=1;

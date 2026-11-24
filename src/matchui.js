@@ -254,10 +254,10 @@ function loop(now){
   if((m.cutId||0)!==(st.cutSeen||0)){st.cutSeen=m.cutId||0;const pb=$('#pbox');if(pb&&!st.skipping){const f=document.createElement('div');f.className='cutfade';pb.appendChild(f);setTimeout(()=>f.remove(),700)}}
   if(!st.paused&&m.phase!=='ht'){
     if(st.goalRp&&!m.goalCele&&!st.replay){const g=st.goalRp;st.goalRp=null;const fr=st.frames.filter(f=>f.t>=g.t-5.5&&f.t<=g.t+1.6);
-      if(fr.length>8&&visible()){st.replay={fr,t:0,slow:.5,goal:true,ang:Math.random()<.5?'goal':'side',z0:st.rd.zoom};try{st.rd.setZoom(Math.min(2.4,(zoomVal()||1)*1.6))}catch(e){}const rp=$('#rp');if(rp){rp.textContent='REPLAY DO GOL';rp.hidden=false}}}
+      if(fr.length>8&&visible()){st.replay={fr,t:0,slow:.5,goal:true,gt:g.t,ang:Math.random()<.5?'goal':'side',z0:st.rd.zoom};try{st.rd.setZoom(Math.min(2.4,(zoomVal()||1)*1.6))}catch(e){}const rp=$('#rp');if(rp){rp.textContent='REPLAY DO GOL';rp.hidden=false}}}
     if(st.hlRp&&!st.replay&&!st.goalRp&&performance.now()>=st.hlRp.at&&m.ball.st!=='fly'){const g=st.hlRp;st.hlRp=null;const fr=st.frames.filter(f=>f.t>=g.t-4&&f.t<=g.t+.9);
       if(fr.length>8&&visible()){st.replay={fr,t:0,slow:.6,goal:true,ang:'goal',z0:st.rd.zoom};const rp=$('#rp');if(rp){rp.textContent='REPLAY';rp.hidden=false}}}
-    if(st.replay){const r=st.replay;r.t+=dtR*(r.slow||1);const i=Math.floor(r.t/.1);const k=(r.t%.1)/.1;
+    if(st.replay){const r=st.replay;const fi=r.fr[Math.min(r.fr.length-1,Math.floor(r.t/.1))];const sl=r.gt!=null&&fi&&fi.t>r.gt-1.3&&fi.t<r.gt+.3?.28:(r.slow||1);/* (20) câmera lenta no momento do chute */r.t+=dtR*sl;const i=Math.floor(r.t/.1);const k=(r.t%.1)/.1;
       if(i>=r.fr.length-1){st.replay=null;if(r.goal){try{st.rd.setZoom(r.z0||zoomVal())}catch(e){}st.last=performance.now()}else st.tail=3.2;const rp=$('#rp');if(rp){rp.hidden=true;rp.textContent='REPLAY'}}else{const lv=lerpView(r.fr[i],r.fr[i+1],k);lv.replayAng=r.ang;st.rd.draw(lv,dtR)}}
     if(!st.replay){
       let sim=st.mode==='hl'?(st.tail>0?dtR:dtR*24):dtR*st.speed;if(st.tail>0)st.tail-=dtR;

@@ -1,6 +1,6 @@
 // FUTBOL — motor visual 3D da partida (Three.js)
 import * as T from './three.module.min.js';
-import {loadAssets,makePlayer} from './players3d.js?v=35';
+import {loadAssets,makePlayer} from './players3d.js?v=36';
 export {loadAssets};
 
 const L=105,W=68,GW=7.32,GH=2.44;
@@ -284,11 +284,13 @@ export class Engine{
       const own=v.own===p.id&&!fly;const near=Math.hypot(bx-x,bz-z)<3.5;
       // suavização (mola amortecida): tira o tremido das mudanças de alvo do motor sem atrasar quem está na bola
       if(!P.glide&&!v.replay){const k=1-Math.exp(-dt*(own||near?28:11));x=P.x+(x-P.x)*k;z=P.z+(z-P.z)*k}
+      if(!v.cele&&!v.replay){for(const [qid,Q] of this.pl){if(qid===p.id||Q.x==null||!Q.root.visible)continue;const ex=x-Q.x,ez=z-Q.z,dq=Math.hypot(ex,ez);if(dq>.01&&dq<.62){const push=(.62-dq)*.5;x+=ex/dq*push;z+=ez/dq*push}}}/* (19) corpos não se atravessam */
       const ddx=x-P.x,ddz=z-P.z;P.x=x;P.z=z;
       const ivx=ddx/Math.max(dt,1e-3),ivz=ddz/Math.max(dt,1e-3);const kv=1-Math.exp(-dt*7);P.vx=(P.vx||0)+(ivx-(P.vx||0))*kv;P.vz=(P.vz||0)+(ivz-(P.vz||0))*kv;
       const dx=P.vx*dt,dz=P.vz*dt,sp=Math.hypot(P.vx,P.vz);
       // direção: com histerese entre "olhar para onde corre" e "olhar para a bola", e giro com velocidade máxima
       let tgt=P.h;const bdist=Math.hypot(bx-x,bz-z);P.runFace=P.runFace?sp>.9:sp>1.6;
+      {const oi=v.own!=null&&info.get(v.own);if(oi&&oi.side!==inf.side&&!inf.gk&&bdist<14&&sp<4.6&&!p.kick){const mvA=Math.atan2(P.vx,P.vz),tb=Math.atan2(bx-x,bz-z);let r=Math.atan2(Math.sin(mvA-tb),Math.cos(mvA-tb));if(Math.abs(r)>1.4)P.runFace=false}}/* (11) defensor recua de frente para o atacante */
       if(p.kick&&fly&&Math.hypot(wx(fly.fx)-x,wz(fly.fy)-z)<2)tgt=Math.atan2(wx(fly.tx)-x,wz(fly.ty)-z);else if(own&&bdist>.15)tgt=Math.atan2(bx-x,bz-z);else if(inf.gk&&Math.abs(x)>L/2-30)tgt=Math.atan2(bx-x,bz-z);// goleiro perto do gol: sempre de frente para a bola (anda de lado/de costas)
       else if(P.runFace)tgt=Math.atan2(P.vx,P.vz);else tgt=Math.atan2(bx-x,bz-z);
       let dh=tgt-P.h;dh=Math.atan2(Math.sin(dh),Math.cos(dh));const ak=p.anim&&p.anim.k;if(ak==='slide'||ak==='fall'||ak==='getup')dh=0;/* no chão não gira o corpo (o giro torcia a cintura) */const maxT=(own?9:P.runFace?6.5:4)*hdt;P.h+=clamp(dh*Math.min(1,hdt*(own?12:8)),-maxT,maxT);
@@ -300,6 +302,12 @@ export class Engine{
       // estilo de cada um: quem é rápido tem passada mais longa; aceleração aparece na inclinação do corpo
       {const a=inf.mp&&inf.mp.a||{};pose.stride=.94+((a.vel||10)-10)*.008+((a.ace||10)-10)*-.003;P.accS=(P.accS||0)+(((sp-(P.spPrev??sp))/Math.max(dt,1e-3))-(P.accS||0))*Math.min(1,dt*5);P.spPrev=sp;pose.acc=P.accS;P.dri=a.dri||10}
       const foot=inf.mp&&inf.mp.p&&inf.mp.p.pe;pose.left=foot==='E'||(foot==='A'&&p.id%2===0);
+      {/* jeito de correr de cada um: rápidos inclinam e bombeiam os braços; fortes e lentos correm mais pesados; o trote é solto */const a=inf.mp&&inf.mp.a||{};
+        pose.style={lean:.035+((a.vel||10)-10)*.004+((a.ace||10)-10)*.002,arm:1+((a.ace||10)-10)*.025,heavy:clamp(((a.frc||10)-(a.vel||10))/10,0,1),bounce:.6+((a.dri||10)-10)*.02};
+        if(inf.mp&&inf.mp.stam!=null&&inf.mp.stam<50){pose.tired=clamp((50-inf.mp.stam)/30,0,1);if(v.setup&&sp<.4&&!own)pose.rest=pose.tired}}
+      if(own){pose.slow=sp<2.6?1:0;if(P.tkT!=null&&this.time-P.tkT<.5)pose.tk={a:this.time-P.tkT,l:P.tkL};
+        {let best=null,bd=1.6;for(const [qid,Q] of this.pl){const qi=info.get(qid);if(!qi||qi.side===inf.side||qi.gk)continue;const d=Math.hypot(Q.x-x,Q.z-z);if(d<bd){bd=d;best=Q}}
+          if(best){let r=Math.atan2(best.x-x,best.z-z)-P.h;r=Math.atan2(Math.sin(r),Math.cos(r));if(Math.abs(r)<2.4)pose.shield={s:r>0?1:-1,k:clamp((1.6-bd)/.8,0,1)}}}}/* (8) braço protege a bola do marcador */
       if(p.touch&&!kick)pose.touch=1;
       if(kick){if(P.kickH==null){P.kickH=by;if(p.kk==='shot'&&by>1.45&&!inf.gk)P.bikeT=t}pose.ballH=P.kickH}else P.kickH=null;
       if(P.bikeT&&t-P.bikeT<2.6)pose.skill={k:'bike',a:t-P.bikeT};else P.bikeT=null;
@@ -313,10 +321,10 @@ export class Engine{
         const key=fly.fx+'|'+fly.fy+'|'+fly.dur;const lat=wz(fly.ty)-z;const need=Math.abs(lat);const hz=fly.endZ||0;
         if(P.gkKey!==key||!P.gkA){P.gkKey=key;const side=Math.sign(-Math.sin(P.h)*lat)||1;let kind;
           if(need>1.5)kind=hz<.55?'block':'dive';else if(fly.out==='goal'&&hz>2.0)kind='miss';else if(hz>1.9)kind='catchH';else if(hz>.9)kind='catchM';else if(hz>.25)kind='catchL';else kind='scoop';
-          const rf=fly.out==='save'?1:fly.out==='goal'?.6:.8;P.gkA={kind,side,reach:need*rf,tEnd:null,pre:0,post:0}}
+          const rf=fly.out==='save'?1:fly.out==='goal'?.6:.8;P.gkA={kind,side,reach:need*rf,tEnd:null,pre:0,post:0,tw:[wx(fly.tx),Math.max(.25,fly.endZ||.3),wz(fly.ty)],out:fly.out}}
         const k=clamp(fly.t/fly.dur,0,1);P.gkA.pre=clamp((k-.1)/.9,0,1);P.gkA.post=0;P.gkA.tEnd=null}
-      else if(inf.gk&&P.gkA){if(P.gkA.tEnd==null)P.gkA.tEnd=t;P.gkA.pre=1;P.gkA.post=t-P.gkA.tEnd;if(P.gkA.post>4||own&&P.gkA.post>1.6)P.gkA=null}
-      if(inf.gk&&P.gkA)pose.gkA={kind:P.gkA.kind,side:P.gkA.side,reach:P.gkA.reach,pre:P.gkA.pre,post:P.gkA.post};
+      else if(inf.gk&&P.gkA){if(P.gkA.tEnd==null)P.gkA.tEnd=t;P.gkA.pre=1;P.gkA.post=t-P.gkA.tEnd;if(P.gkA.post>3||own&&P.gkA.post>1.1)P.gkA=null}/* (10) goleiro se recompõe mais rápido */
+      if(inf.gk&&P.gkA)pose.gkA={kind:P.gkA.kind,side:P.gkA.side,reach:P.gkA.reach,pre:P.gkA.pre,post:P.gkA.post,tw:P.gkA.tw,out:P.gkA.out};
       if(!pose.gkA&&inf.gk&&v.own&&info.get(v.own)&&info.get(v.own).side!==inf.side&&Math.abs(bx-x)<30)pose.ready=1;
       P.ox+=(ox-P.ox)*Math.min(1,dt*10);P.oz+=(oz-P.oz)*Math.min(1,dt*(oz?8:3));
       P.root.position.set(x+P.ox,0,z+P.oz);P.root.rotation.y=P.h;
@@ -324,7 +332,7 @@ export class Engine{
       if(!inf.gk&&by>1.5&&by<2.8&&bdist<1.2){pose.jump=1}
       // comemoração
       if(v.cele&&v.cele.mp&&info.get(v.cele.mp.id)&&inf.side===info.get(v.cele.mp.id).side){const cx=wx(v._flipped?L-v.cele.mp.x:v.cele.mp.x);
-        if(p.id===v.cele.mp.id)pose.cele=2+((p.id+(this.goals=this.goals||0))%4);else if(Math.abs(cx-x)<25)pose.cele=1}
+        if(p.id===v.cele.mp.id){const a=inf.mp&&inf.mp.a||{};const per=(a.dri||10)>=15?4:(a.frc||10)>=15?3:(a.vel||10)>=15?2:5;const g=(this.goals=this.goals||0);pose.cele=(g+p.id)%3===0?2+((p.id+g)%4):per}/* (12) cada jogador tem sua comemoração preferida */else if(Math.abs(cx-x)<25)pose.cele=1}
       // tipo de chute/passe, animações especiais, goleiro com a bola na mão
       pose.kk=p.kk;
       // animações especiais contadas em tempo real (o relógio do jogo para nas bolas paradas)
@@ -337,30 +345,32 @@ export class Engine{
         if(Math.abs(rel)>2.1)pose.back=1;else if(Math.abs(rel)>1.0)pose.side=Math.sign(rel)}
       // inclina na curva e freia
       const turn=(P.lastH!=null?Math.atan2(Math.sin(P.h-P.lastH),Math.cos(P.h-P.lastH))/Math.max(dt,1e-3):0);P.lastH=P.h;
-      P.lean=(P.lean||0)+(clamp(-turn*sp*.012,-.22,.22)-(P.lean||0))*Math.min(1,hdt*6);pose.lean=P.lean;P.trn=(P.trn||0)+(clamp(turn,-8,8)-(P.trn||0))*Math.min(1,hdt*8);pose.turn=P.trn;pose.own=own?1:0;pose.spd=sp;
+      P.lean=(P.lean||0)+(clamp(-turn*sp*.012,-.22,.22)-(P.lean||0))*Math.min(1,hdt*6);pose.lean=P.lean;if(Math.abs(turn)>2.4&&sp>3.6&&!kick){P.plantT=this.time;P.plantS=Math.sign(turn)}if(P.plantT!=null&&this.time-P.plantT<.32)pose.plant={a:this.time-P.plantT,s:P.plantS};/* (4) corte com o pé plantado */P.trn=(P.trn||0)+(clamp(turn,-8,8)-(P.trn||0))*Math.min(1,hdt*8);pose.turn=P.trn;pose.own=own?1:0;pose.spd=sp;
       const acc=(sp-(P.lastSp??sp))/Math.max(dt,1e-3);P.lastSp=sp;P.brk=(P.brk||0)+((acc<-14&&sp>1.5?1:0)-(P.brk||0))*Math.min(1,dt*5);if(P.brk>.05)pose.brake=P.brk;
       // domínio: bola chegando alta perto do jogador
       if(fly&&fly.kind!=='shot'&&by>.5&&bdist<1.6&&!inf.gk){pose.trap=by>1.65?'head':by>1.15?'chest':'thigh'}
       // disputa de cabeça: quem está perto da bola alta salta junto
       if(!inf.gk&&!pose.jump&&by>1.4&&by<3&&bdist<2.2&&fly){pose.jump=clamp(1-(bdist-1)/1.2,0,1)}
-      {let lk=Math.atan2(bx-x,bz-z)-P.h;lk=Math.atan2(Math.sin(lk),Math.cos(lk));pose.look=lk}
+      {let lk=Math.atan2(bx-x,bz-z)-P.h;if(kick&&fly&&fly.recv&&this.pl.get(fly.recv.id)){const Q=this.pl.get(fly.recv.id);lk=Math.atan2(Q.x-x,Q.z-z)-P.h}lk=Math.atan2(Math.sin(lk),Math.cos(lk));pose.look=lk}/* (5) olha para o companheiro no passe */
       P._pose=pose;P.pose(pose);if(pose.jump&&!pose.dive){P.body.position.y=Math.max(P.body.position.y,clamp(by-1.85,.05,.55)*pose.jump)}
       if(pose.hold){ownP={P,x:x+P.ox,z:z+P.oz,mv:0,ph:0,hold:1}}
       if(P.throwing){this._throwP={P,x:x+P.ox,z:z+P.oz}}
       if(own&&!pose.hold){ownP={P,x:x+P.ox,z:z+P.oz,mv:pose.mv,ph:pose.ph}}
     }
     // bola colada no pé de quem conduz (sem mudar o lance, só o desenho)
-    if(ownP&&ownP.hold){const P=ownP.P;bx=ownP.x+Math.sin(P.h)*.32;bz=ownP.z+Math.cos(P.h)*.32;by=1.1}
+    if(ownP&&ownP.hold){const P=ownP.P;bx=ownP.x+Math.sin(P.h)*.32;bz=ownP.z+Math.cos(P.h)*.32;by=1.1;
+      {/* bola presa entre as duas mãos do goleiro */const hl=P.B.hand_l,hr=P.B.hand_r;if(hl&&hr){P.root.updateMatrixWorld(true);const a=this._ha||(this._ha=new T.Vector3()),b2=this._hb||(this._hb=new T.Vector3());hl.getWorldPosition(a);hr.getWorldPosition(b2);
+        const mx=(a.x+b2.x)/2,my=(a.y+b2.y)/2,mz=(a.z+b2.z)/2;if(Math.hypot(mx-ownP.x,mz-ownP.z)<1.4&&my>.2){bx=mx+Math.sin(P.h)*.1;by=Math.max(.18,my);bz=mz+Math.cos(P.h)*.1}}}}
     else if(this._throwP&&v.dead){const P=this._throwP.P;bx=this._throwP.x+Math.sin(P.h)*.05;bz=this._throwP.z+Math.cos(P.h)*.05;by=2.15}
     else if(ownP&&by<.6){const P=ownP.P;const hx=Math.sin(P.h),hz=Math.cos(P.h);const sp=Math.hypot(P.vx||0,P.vz||0);
       // condução física: a bola rola à frente e perde velocidade; o pé que chega nela dá o toque (craque: toque curto e colado; perna-de-pau: bola longe)
-      const DB=P.db||(P.db={d:.45,v:0,lat:0});if(P.dbT===undefined||this.time-P.dbT>.25){DB.d=.45;DB.v=0}P.dbT=this.time;P.root.updateMatrixWorld(true);
+      const DB=P.db||(P.db={d:.45,v:0,lat:0});if(P.dbT===undefined||this.time-P.dbT>.25){DB.d=.45;DB.v=0;if(sp>1.2){DB.d=.55;DB.v=sp+.3}}/* (6) domínio orientado: o primeiro toque já leva a bola para frente do movimento */P.dbT=this.time;P.root.updateMatrixWorld(true);
       const sk=clamp(((P.dri||10)-5)/15,0,1);DB.v=Math.max(0,DB.v-dt*2.2);DB.d+=(DB.v-sp)*dt;
       const fp=this._fp||(this._fp=new T.Vector3());let touched=false;
       if(sp>.9){for(const fb of ['ball_l','ball_r']){const b=P.B[fb];if(!b)continue;b.getWorldPosition(fp);const fd=(fp.x-ownP.x)*hx+(fp.z-ownP.z)*hz;
-        if(fd>DB.d-.16&&fp.y<.3&&!touched){DB.v=sp+.6+(1-sk)*1.9+Math.min(1.2,sp*.12);DB.d=Math.max(DB.d,fd+.12);DB.lat=((fp.x-ownP.x)*hz-(fp.z-ownP.z)*hx)*.6;touched=true}}}
+        if(fd>DB.d-.16&&fp.y<.3&&!touched){DB.v=sp+.35+(1-sk)*1.1+Math.min(.7,sp*.07);/* toque curto: bola a uma distância de condução real */DB.d=Math.max(DB.d,fd+.12);DB.lat=((fp.x-ownP.x)*hz-(fp.z-ownP.z)*hx)*.6;touched=true;P.tkT=this.time;P.tkL=fb==='ball_l'?'l':'r'}}}
       else{DB.d+=(.38-DB.d)*Math.min(1,dt*4);DB.v=0}
-      DB.d=clamp(DB.d,.3,.55+sp*(.16+.2*(1-sk)));DB.lat*=Math.exp(-dt*3);
+      DB.d=clamp(DB.d,.28,.5+sp*(.07+.11*(1-sk)));DB.lat*=Math.exp(-dt*3);
       const tx=ownP.x+hx*DB.d+hz*DB.lat,tz=ownP.z+hz*DB.d-hx*DB.lat;
       const k=Math.hypot(bx-ownP.x,bz-ownP.z)<2.2?1:0;bx+=(tx-bx)*k;bz+=(tz-bz)*k}
     // bola nunca some/teletransporta: a posição desenhada persegue a real (rolando rápido); só em reposição longa ela some e reaparece suave
@@ -443,9 +453,10 @@ export class Engine{
     // batedor: parado, corrida curta em diagonal e chute com o pé certo
     const lat=(S.left?-1:1)*1.0;const back=3.4;
     const p0={x:S.b.x-S.dir.x*back-S.side.x*lat,z:S.b.z-S.dir.z*back-S.side.z*lat},p1={x:S.b.x-S.dir.x*.55-S.side.x*lat*.32,z:S.b.z-S.dir.z*.55-S.side.z*lat*.32};
-    const rk=sm((t-TT.run)/(TT.kick-TT.run-.05));const Pt=S.Pt;Pt.root.visible=true;Pt.root.position.set(p0.x+(p1.x-p0.x)*rk,0,p0.z+(p1.z-p0.z)*rk);
+    const hold=S.sp==='pen'?.24:0;const tq=hold&&t>TT.kick-.62?(t<TT.kick-.62+hold?TT.kick-.62:t-hold):t;/* (17) paradinha antes de bater o pênalti */
+    const rk=sm((tq-TT.run)/(TT.kick-hold-TT.run-.05));const Pt=S.Pt;Pt.root.visible=true;Pt.root.position.set(p0.x+(p1.x-p0.x)*rk,0,p0.z+(p1.z-p0.z)*rk);
     {/* olha para onde corre e, nas últimas passadas, vira para o gol (giro suave, sem torcer a cintura) */const hr=Math.atan2(p1.x-p0.x,p1.z-p0.z);let dh=S.h-hr;while(dh>Math.PI)dh-=2*Math.PI;while(dh<-Math.PI)dh+=2*Math.PI;const tw=sm((t-(TT.kick-.45))/.4);Pt.root.rotation.y=t<TT.run?S.h:hr+dh*tw}
-    const kk=t>=TT.kick-.26?Math.min(1,(t-(TT.kick-.26))/.6):0;const runV=t>TT.run&&t<TT.kick-.22?Math.min(.55,(t-TT.run)*1.4):0;
+    const kk=t>=TT.kick-.26?Math.min(1,(t-(TT.kick-.26))/.6):0;const runV=t>TT.run&&t<TT.kick-.22&&!(hold&&t>TT.kick-.62&&t<TT.kick-.62+hold)?Math.min(.55,(t-TT.run)*1.4):0;
     Pt.pose({mv:runV,kick:kk>0&&kk<1?kk:0,kk:'shot',left:S.left,t,noDrib:1,look:0});
     // bola
     let bx=S.b.x,bz=S.b.z,by=.19;const fk=(t-TT.kick)/TT.fly;
@@ -465,7 +476,7 @@ export class Engine{
       const ds=Math.sign(-Math.sin(S.h+Math.PI)*dl)||1;const tk=t-TT.kick-(S.out==='goal'?.12:.02);
       if(tk>0){const need=Math.abs(dl),hz=S.endZ||0;if(!S.gkKind)S.gkKind=need>1.5?(hz<.55?'block':'dive'):(S.out==='goal'&&hz>2?'miss':hz>1.9?'catchH':hz>.9?'catchM':hz>.25?'catchL':'scoop');
         const fl=TT.fly*.8;P.pose({t,mv:0,gkA:{kind:S.gkKind,side:ds,reach:need*reach,pre:Math.min(1,tk/fl),post:Math.max(0,tk-fl)}})}
-      else P.pose({ready:1,crouch:.8,mv:Math.abs(Math.cos(t*5.5))*.06,side:Math.cos(t*5.5)>0?1:-1,t})}
+      else{P.pose({ready:1,crouch:.8,mv:Math.abs(Math.cos(t*5.5))*.06,side:Math.cos(t*5.5)>0?1:-1,t});if(S.sp==='pen')P.root.position.y=Math.abs(Math.sin(t*6.5))*.09}}
     // câmera atrás do batedor, aproximando
     const cb=sm(t/1.6),ch=S.sp==='pen'?2.1:3.2,cd=(S.sp==='pen'?7.5:10.5)-cb*1.6;
     this.cam.position.set(S.b.x-S.dir.x*cd+S.side.x*(S.left?.9:-.9),ch,S.b.z-S.dir.z*cd+S.side.z*(S.left?.9:-.9));this.cam.fov=34;this.cam.updateProjectionMatrix();
