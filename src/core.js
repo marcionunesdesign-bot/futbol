@@ -782,7 +782,7 @@ function endSeason(){
   // convites de clubes maiores
   summary.market=seasonMarket();
   const over=G.board.goalPos-summary.pos;jobOffersFor(false,over,cupStage);
-  {const all=[...(G.xfer||[]),...(summary.market||[])].sort((a,b)=>b.price-a.price);summary.recap.xfers=all.slice(0,10);summary.recap.nx=all.length;G.xfer=[]}
+  {const seen=new Set();const all=[...(G.xfer||[]),...(summary.market||[])].filter(x=>{const key=x.pid+'|'+x.from+'|'+x.to;if(seen.has(key))return false;seen.add(key);return true}).sort((a,b)=>b.price-a.price);summary.recap.xfers=all.slice(0,10);summary.recap.nx=all.length;G.xfer=[]}
   G.seasonLog.push(summary);G.lastSummary=summary;G.season++;G.seasonMoney={in:0,out:0};
   G.specialAuction=true;startSeason(false);
 }
