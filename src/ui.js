@@ -73,7 +73,7 @@ const NAV=[['home','Início'],['squad','Plantel'],['tactics','Tática'],['traini
 function renderTop(){
   const g=G();const c=C.userClub();const di=C.dateInfo();
   const auOpen=g.auction&&g.auction.lots.some(x=>!x.done);
-  $('#nav').innerHTML=NAV.map(([k,l])=>`<button data-go="${k}" class="${view===k?'on':''}">${l}${k==='auction'&&auOpen?'<i></i>':''}${k==='home'&&g.inbox.some(m=>!m.read)?'<i></i>':''}${k==='training'&&g.trainPending&&C.nextUserMatch()?'<i></i>':''}</button>`).join('')+`<button data-more class="more ${MORE.includes(view)?'on':''}">Mais${auOpen?'<i></i>':''}</button>`;
+  $('#nav').innerHTML=NAV.map(([k,l])=>`<button data-go="${k}" class="${view===k?'on':''}">${l}${k==='auction'&&auOpen?'<i></i>':''}${k==='home'&&g.inbox.some(m=>!m.read)?'<i></i>':''}${k==='training'&&g.trainPending&&!g.autoTrain&&C.nextUserMatch()?'<i></i>':''}</button>`).join('')+`<button data-more class="more ${MORE.includes(view)?'on':''}">Mais${auOpen?'<i></i>':''}</button>`;
   $('#k-money').textContent=money(c.money);$('#k-date').textContent=di?di.label.replace('Taça Nacional · ','Taça · '):'Fim de temporada';$('#k-season').textContent=`Temporada ${g.season}`;
   $('#top-crest').innerHTML=crest(c,30);
   $('#b-music').classList.toggle('off',!A.S.music);const bc=$('#b-cloud');if(bc)bc.hidden=!(ACC.st.user&&G().slot);$('#b-sfx').classList.toggle('off',!A.S.sfx);
@@ -118,7 +118,7 @@ function vHome(){
   <div class="tiles">
     ${tile('squad','👥','Meu plantel',`${ps.length} jogadores · média ${avg}`,inj?`${inj} 🚑`:'','big')}
     ${tile('tactics','📋','Tática',`${esc(g.tactic.formation)} · escalação`,'')}
-    ${tile('training','🏋️','Treino',g.trainPending?`⚠️ Pendente · ${esc(tf)}`:`Feito ✓ · ${esc(tf)}`,g.trainPending?'!':'',g.trainPending?'hot':'')}
+    ${tile('training','🏋️','Treino',g.autoTrain?`Automático ✓ · ${esc(tf)}`:g.trainPending?`⚠️ Pendente · ${esc(tf)}`:`Feito ✓ · ${esc(tf)}`,g.trainPending&&!g.autoTrain?'!':'',g.trainPending&&!g.autoTrain?'hot':'')}
     ${tile('auction','🔨','Leilão',lots?`${lots} lote(s) aberto(s)`:'Abre após o próximo jogo',lots||'',lots?'hot':'')}
     ${tile('youth','🌱','Base',`${yN} promessa(s)`,'')}
     ${tile('market','🛒','Contratar',`Buscar jogadores e fazer proposta`,'')}
@@ -278,6 +278,7 @@ function vTraining(){
       <div class="tlog">${gains.slice(0,14).map(r=>`<div class="tl" data-player="${r.id}">${posTag(r.p.p)}<b>${esc(r.p.n)}</b><span class="tl-g">${Object.entries(r.d).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>`<i>+${v.toFixed(1)} ${C.ATTR_LABEL[k]}</i>`).join('')}</span><span class="dim tl-f">cond. ${r.fi[0]}→${r.fi[1]}%</span></div>`).join('')||'<p class="muted">Ninguém evoluiu nesta sessão. Jovens e quem joga evoluem mais.</p>'}</div></div>`})():`<div class="frame"><div class="h">Último treino</div><p class="muted">Assim que você realizar o treino desta semana, aqui aparece o relatório: quem treinou, quem foi poupado e quanto cada um evoluiu.</p></div>`;
   $('#v-training').innerHTML=`<div class="page-head"><div><div class="eyebrow">Centro de treinamento</div><h1 class="title">Treino</h1></div><div class="sp"></div>
     <div class="frame" style="padding:12px 16px;min-width:min(300px,100%)"><div class="h" style="margin-bottom:6px">Entrosamento tático <small>${g.tactic.formation}</small></div><div class="row" style="flex-wrap:nowrap"><div class="bar a" style="flex:1;height:10px"><i style="width:${g.fam}%"></i></div><b class="num" style="font-size:22px">${g.fam}%</b></div></div></div>
+  <div class="frame tauto${g.autoTrain?' on':''}"><div><b>Treino automático</b><span class="muted">${g.autoTrain?(g.autoLog?`Último treino: ${esc(C.TRAIN[g.autoLog.focus]?C.TRAIN[g.autoLog.focus].n:g.autoLog.focus)} ${['leve','normal','pesado'][g.autoLog.int]} · ${g.autoLog.ups} jogador(es) evoluíram${g.autoLog.rest?` · ${g.autoLog.rest} poupado(s)`:''}.`:'Ligado: o treino acontece sozinho depois de cada jogo.'):'Deixe o preparador cuidar: ele escolhe o foco, a intensidade e quem descansa, e treina sozinho depois de cada jogo.'}</span></div><button class="tgl ${g.autoTrain?'on':''}" id="t-auto" aria-label="Treino automático"></button></div>
   ${(()=>{const pend=g.trainPending;const adv=C.trainAdvice();const tfA=C.TRAIN[adv.focus];const same=tr.focus===adv.focus&&tr.int===adv.int;
     return `<div class="frame tsess ${pend?'pend':'done'}"><div class="tsess-h"><div><div class="eyebrow">${pend?'Treino da semana · pendente':'Treino da semana · feito ✓'}</div>
       <div class="tnext-t">${pend?`Antes de ${um&&um.label?esc(um.label):'o próximo jogo'}`:'Time preparado para o jogo'}</div>
@@ -296,6 +297,7 @@ function vTraining(){
     <p class="muted" style="margin:0 0 8px">Os garotos da base não usam o treino do profissional: cada um treina na função escolhida na aba Base, automaticamente, depois de cada partida. Quanto melhor a estrutura (★) da base, mais rápido eles evoluem — e quem ganha minutos no profissional evolui 25% a mais. O <b>Centro de treinamento</b> (aba Clube, nível ${ct}) acelera o treino do profissional em +${(ct-1)*12}%.</p>
     ${ys.length?`<table class="yt-t"><thead><tr><th>Garoto</th><th>Treina</th><th>Geral</th><th>Última semana</th></tr></thead><tbody>${ys.map(p=>{const r=yl&&yl.rows.find(x=>x.id===p.id);return `<tr class="click" data-player="${p.id}"><td><b>${esc(p.n)}</b> <span class="dim">${p.p} · ${p.a}a</span></td><td>${({equilibrado:'Equilibrado',tecnico:'Técnico',fisico:'Físico',finalizacao:'Finalização',defesa:'Defesa',goleiro:'Goleiro'})[p.tr||'equilibrado']}</td><td>${ovrTag(C.ovr(p))}</td><td>${r?`<b style="color:${r.g>0?'var(--ok)':'var(--ink3)'}">${r.g>0?'+':''}${r.g.toFixed(2)} pts</b>${r.o[1]>r.o[0]?` · geral ${r.o[0]}→${r.o[1]}`:''}`:'<span class="dim">treina após o próximo jogo</span>'}</td></tr>`}).join('')}</tbody></table>`:'<p class="dim">Nenhum garoto na base — faça uma peneira na aba Base.</p>'}
     <div class="row" style="margin-top:8px"><button class="btn ghost xs" data-go="youth">Mudar o treino dos garotos</button><button class="btn ghost xs" data-go="club">Investir em estrutura</button></div></div>`})()}`;
+  const ta=$('#t-auto');if(ta)ta.onclick=err(()=>{const on=!g.autoTrain;const r=C.setAutoTrain(on);toast(on?(r?`Treino automático ligado: treino feito agora (${r.ups} evoluíram).`:'Treino automático ligado.'):'Treino automático desligado: você volta a escolher o treino.');renderTop();keepScroll(vTraining)});
   const tr0=$('#t-run');if(tr0)tr0.onclick=err(()=>{const L=C.runTraining();A.init();A.applause&&A.applause(1.2,.25);const ups=L.rows.filter(r=>Object.values(r.d).some(v=>v>0)).length;toast(`🏋️ Treino feito! ${ups} jogador(es) evoluíram. Entrosamento ${L.fam}%.`);renderTop();vTraining();$('main').scrollTop=0});
   const ua=$('#t-useadv');if(ua)ua.onclick=()=>{const a=C.trainAdvice();g.training.focus=a.focus;g.training.int=a.int;C.save();toast('Plano do preparador aplicado.');keepScroll(vTraining)};
   const tr2=$('#t-rest');if(tr2)tr2.onclick=()=>{const a=C.trainAdvice();a.tired.forEach(id=>{const p=P(id);if(p&&!p.rest)C.setRest(id,true)});toast(`${a.tired.length} jogador(es) vão descansar.`);keepScroll(vTraining)};
@@ -444,7 +446,7 @@ function clubModal(id){const c=clubOf(id);const ps=c.players.map(P).filter(Boole
 /* ---------- eventos globais ---------- */
 function bind(){
   document.addEventListener('click',err(e=>{
-    const t=e.target.closest('[data-recapend],[data-recap],[data-offerp],[data-pnav],[data-go],[data-player],[data-close],[data-club],[data-sort],[data-sf],[data-train],[data-rest],[data-int],[data-lg],[data-talk],[data-sell],[data-promote],[data-demote],[data-release],[data-scout],[data-upgrade],[data-bid],[data-pass],[data-open],[data-nextlot],[data-mksearch],[data-bstep],[data-bset],[data-install],[data-austage],[data-austage-close],[data-sellsel],[data-offer],[data-msg],[data-job],[data-nojob],[data-more],[data-fort],[data-look],[data-fac],[data-act],[data-boost],[data-celeok],[data-trophies],[data-cuprule],#b-continue,#b-music,#b-sfx,#b-menu');
+    const t=e.target.closest('[data-autotrain],[data-recapend],[data-recap],[data-offerp],[data-pnav],[data-go],[data-player],[data-close],[data-club],[data-sort],[data-sf],[data-train],[data-rest],[data-int],[data-lg],[data-talk],[data-sell],[data-promote],[data-demote],[data-release],[data-scout],[data-upgrade],[data-bid],[data-pass],[data-open],[data-nextlot],[data-mksearch],[data-bstep],[data-bset],[data-install],[data-austage],[data-austage-close],[data-sellsel],[data-offer],[data-msg],[data-job],[data-nojob],[data-more],[data-fort],[data-look],[data-fac],[data-act],[data-boost],[data-celeok],[data-trophies],[data-cuprule],#b-continue,#b-music,#b-sfx,#b-menu');
     if(!t)return;A.init();
     if(t.id==='b-music'||t.id==='b-sfx'){volPop(t,t.id==='b-music'?'music':'sfx');return}
     if(t.id==='b-menu'){menuModal('root');return}
@@ -452,6 +454,7 @@ function bind(){
     if(t.id==='b-continue'){cont();return}
     const d=t.dataset;
     if(d.go){e.preventDefault();closeModal();if(d.lgset)S.league=d.lgset;go(d.go);return}
+    if('autotrain' in d){const r=C.setAutoTrain(true);toast(r?`Treino automático ligado: treino feito agora (${r.ups} evoluíram).`:'Treino automático ligado.');renderTop();if(view==='match')MV.render();else if(view==='training')vTraining();return}
     if('recapend' in d){closeModal();const g=G();if(g.jobOffers)setTimeout(jobsModal,80);else if(!uiQueue()&&view==='home')vHome();return}
     if('close' in d||t.matches('[data-close]')){closeModal();return}
     if(d.pnav){navPlayer(+d.pnav);return}

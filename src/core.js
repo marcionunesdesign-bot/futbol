@@ -453,6 +453,7 @@ function finishDate(userRes){
   if(G.trainPending){G.fam=clamp(G.fam-3,0,100);if(!bye)msg('Time foi a campo sem treinar','Não houve treino antes deste jogo: o entrosamento caiu e o time rendeu menos. Faça o treino da semana na aba Treino antes de cada partida.')}
   postMatchRecover(userRes);G.lastMinutes=userRes?userRes.minutes:{};G.trainPending=true;G.trainLog=null;
   aiMaintenance();
+  if(G.autoTrain)try{autoTrainNow()}catch(e){}
   if(!bye)boardUpdate(userRes,um);
   if(!bye)try{rollFortune(userRes)}catch(e){console.error(e)}
   resolveAuction();
@@ -577,6 +578,11 @@ function trainAdvice(){const c=userClub();const t=G.tactic;const um=nextUserMatc
   if(tired.length)R.push(`${tired.length} jogador(es) abaixo de 68% de condição: sugiro poupar.`);
   return {focus,int,reasons:R,tired:tired.map(p=>p.id),opp:opp&&opp.short,diff}}
 function setIndividual(pid,attr){const p=G.players[pid];if(!p)return;p.tf=attr||null;save()}
+/* treino automático: o preparador escolhe foco, intensidade e quem descansa, e treina logo depois do jogo */
+function autoTrainNow(){if(!G||!G.autoTrain||!G.trainPending)return null;const a=trainAdvice();G.training=G.training||{focus:'equilibrado',int:1};G.training.focus=a.focus;G.training.int=a.int;
+  for(const id of userClub().players){const p=G.players[id];if(p&&!p.inj)p.rest=a.tired.includes(id)}
+  const L=runTraining();const ups=(L&&L.rows||[]).filter(r=>Object.values(r.d).some(v=>v>0)).length;G.autoLog={date:G.date,season:G.season,focus:a.focus,int:a.int,fam:L?L.fam:G.fam,ups,rest:a.tired.length};save();return G.autoLog}
+function setAutoTrain(on){G.autoTrain=!!on;save();return on?autoTrainNow():null}
 function setRest(pid,v){const p=G.players[pid];if(!p)return;p.rest=!!v;save()}
 function setBonus(k,v){G.bonus=G.bonus||{win:0,draw:0,goal:0};G.bonus[k]=Math.max(0,Math.round(+v||0));save()}
 function aiMaintenance(){
@@ -877,7 +883,7 @@ function resolveFortune(i){const f=G.fortune;if(!f)return null;const c=userClub(
 function plog(p,t,txt){if(!p)return;p.log=p.log||[];p.log.unshift({s:G.season,d:G.date,t,txt});if(p.log.length>30)p.log.length=30}
 function msg(title,body,extra={}){G.inbox.unshift({id:G.uid++,date:G.date,season:G.season,title,body,read:false,...extra});G.inbox=G.inbox.slice(0,80)}
 
-return {newerSave,progressOf,current,get G(){return G},set G(v){G=v},set onSave(f){onSave=f},loadObj(o){G=o;afterLoad();try{localStorage.setItem(KEY,JSON.stringify(G))}catch(e){}},D,R,rnd,rint,pick,clamp,gauss,shuffle,DIVS,ATTR,ATTR_LABEL,ATTR_GROUPS,W,POS,STYLES,migratePlayer,setIndividual,setRest,setBonus,bonusBoost,POS_NAME,GROUP,ovr,ovrFor,posFactor,ratingIn,FN,fnGroup,fnOf,
+return {autoTrainNow,setAutoTrain,newerSave,progressOf,current,get G(){return G},set G(v){G=v},set onSave(f){onSave=f},loadObj(o){G=o;afterLoad();try{localStorage.setItem(KEY,JSON.stringify(G))}catch(e){}},D,R,rnd,rint,pick,clamp,gauss,shuffle,DIVS,ATTR,ATTR_LABEL,ATTR_GROUPS,W,POS,STYLES,migratePlayer,setIndividual,setRest,setBonus,bonusBoost,POS_NAME,GROUP,ovr,ovrFor,posFactor,ratingIn,FN,fnGroup,fnOf,
   FORMATIONS,buildSlots,valueOf,wageOf,formAvg,genPlayer,newGame,takeOver,save,load,hasSave,wipe,exportSave,importSave,userClub,bestLineup,autoLineup,validateLineup,setFormation,
   teamStrength,coachOf,aiTeam,userTeam,runTraining,trainAdvice,syncRosters,teamTalk,dateInfo,nextUserMatch,ensureCupDraw,finishDate,sortedTable,penalties,money,payroll,TRAIN,YTRAIN,scout,scoutCost,upgradeAcademy,academyCost,promote,demote,release,
   talk,moodText,relText,startSeason,expandLeagues,newAuction,makeOffer,askPrice,searchPlayers,listForSale,closeLot,answerOffer,acceptJob,declineJobs,CAL,CUP_NAMES,CUP_RULE,FAC,facLvl,facCost,buyFac,ACTS,doAct,playerBoostCost,boostPlayer,prizeTable,DIV_PRIZE,trophies,resolveFortune,FORT,divName,DIV_TV,msg,quickResult,valueOfNow:valueOf};
