@@ -144,7 +144,7 @@ export function makePlayer(o){
   function rot(name,list,amt=1){const b=B[name];if(!b||amt<=0)return;tq.identity();for(const [a,ang] of list){tq2.setFromAxisAngle(ax.copy(a),ang*amt);tq.premultiply(tq2)}
     pq.identity();let p=b.parent;const chain=[];while(p&&p!==body){chain.push(p);p=p.parent}for(let i=chain.length-1;i>=0;i--)pq.multiply(chain[i].quaternion);
     const pinv=pq.clone().invert();b.quaternion.premultiply(pinv.multiply(tq).multiply(pq))}
-  let lastT=null,phase=Math.random(),wPrev={};
+  let lastT=null,lastR=null,phase=Math.random(),wPrev={};
   const SPAX={};for(const [k,c] of [['spine_01','spine_02'],['spine_02','spine_03'],['spine_03','neck_01']]){if(B[k]&&B[c]){const v=B[c].position.clone();if(v.lengthSq()>1e-8)SPAX[k]=v.normalize()}}
   const tw=new T.Quaternion(),tinv=new T.Quaternion(),sw=new T.Quaternion(),QI=new T.Quaternion();
   const W=(k,w,time)=>{const a=act[k];if(!a||w<=0)return;a.enabled=true;a.setEffectiveWeight(w);if(time!=null)a.time=time};
@@ -172,11 +172,15 @@ export function makePlayer(o){
   const P=(n,w,time,root)=>{if(!n||w<=0||!act[n])return false;const a=act[n],d=a.getClip().duration;const tt=Math.max(0,Math.min(d-1e-3,time));TG.set(n,(TG.get(n)||0)+w);CT.set(n,tt);a.time=tt;
     const r=rootAt(n,a.time);RY+=r[1]*w;if(root===2){RX+=r[0]*w*.35;RZ+=r[2]*w*.35}return true};
   // chute em segundos reais: arma (~0,26 s até o contato) e acompanha o movimento depois
-  const kickS=(n,k,lead)=>{const m=MX[n];if(!m)return 0;const s=k*.6;return Math.max(0,Math.min(m.dur-.02,m.hit-lead*1.3+s*1.3))};
+  const kickS=(n,k,lead)=>{const m=MX[n];if(!m)return 0;const s=k*.6;const adv=lead>.1?.2:0;/* o contato visual do pé vinha ~0,15 s depois da saída da bola */return Math.max(0,Math.min(m.dur-.02,m.hit-lead*1.3+s*1.3+adv))};
   const kickT=(n,k)=>{const m=MX[n];if(!m)return 0;const h=Math.min(m.hit,m.dur*.9);return k<.45?h*(k/.45):h+(m.dur-h)*((k-.45)/.55)};
   const lpPh={};
   function pose(p){
-    const t=p.t||0;const dt=lastT==null?0:Math.min(.1,Math.max(0,t-lastT));lastT=t;
+    const t=p.t||0;const dtS=lastT==null?0:Math.min(.4,Math.max(0,t-lastT));lastT=t;
+    // tempo real x tempo do jogo: em 2x/4x o jogo corre, mas o corpo se mexe no máximo 1,6x (nada de pular de pose em pose)
+    const nowR=performance.now()/1000;const rdt=lastR==null?0:Math.min(.1,Math.max(0,nowR-lastR));lastR=nowR;
+    const spd=rdt>.002?Math.max(.2,Math.min(8,dtS/rdt)):1;const fast=spd>1.3;
+    const dt=fast?Math.min(dtS,rdt*1.6):Math.min(.1,dtS);const fdt=fast?rdt:dt;
     for(const k in act){act[k].enabled=false;act[k].setEffectiveWeight(0)}
     body.rotation.set(0,0,0);body.position.set(0,0,0);RX=RY=RZ=0;TG.clear();
     const mv=p.mv??0,sp=mv*7.2;const special=p.anim&&p.anim.k;const an=p.anim?p.anim.a:0;let locoW=1;
@@ -238,14 +242,14 @@ export function makePlayer(o){
         else{const r0=rate(a0),r1=rate(a1);phase=(phase+dt*(a0[1]?r0*(1-f)+r1*f:r1))%1;
           if(!a0[1]){P(a0[0],lw*(1-f),(t*.6)%m0.dur);P(a1[0],lw*f,phase*m1.dur)}else{P(a0[0],lw*(1-f),phase*m0.dur);P(a1[0],lw*f,phase*m1.dur)}}}}
     // transição suave entre movimentos (crossfade ~0,15 s): nada de pulo de pose
-    {const k=dt>0?Math.min(1,dt*9):1;let sum=0;const keys=new Set([...TG.keys(),...CW.keys()]);
+    {const k=fdt>0?Math.min(1,fdt*(kw>.05||p.kick?30:9)):1;/* no chute a pose responde na hora: o pé encontra a bola no momento certo */let sum=0;const keys=new Set([...TG.keys(),...CW.keys()]);
       for(const n of keys){const tg=TG.get(n)||0;let c=CW.get(n);c=c==null?tg:c+(tg-c)*k;if(c<.01&&tg===0){CW.delete(n);continue}CW.set(n,c);sum+=c}
       for(const n of CW.keys()){const a=act[n];a.enabled=true;a.setEffectiveWeight(CW.get(n)/Math.max(1e-4,sum));if(!TG.has(n))a.time=CT.get(n)??a.time}}
     mixer.update(0);
     // trava a cintura: a coluna pode inclinar, mas quase não torce (nada de tronco virado ao contrário do quadril)
     if(!(special==='slide'||special==='fall'||p.dive||p.gkA||special==='parry'||special==='punch')){for(const k in SPAX){const b=B[k];if(!b)continue;const ax=SPAX[k];const q=b.quaternion;
       const d=q.x*ax.x+q.y*ax.y+q.z*ax.z;tw.set(ax.x*d,ax.y*d,ax.z*d,q.w);const l=Math.hypot(tw.x,tw.y,tw.z,tw.w);if(l<1e-6)continue;tw.x/=l;tw.y/=l;tw.z/=l;tw.w/=l;
-      tinv.copy(tw).invert();sw.copy(q).multiply(tinv);tw.slerp(QI,WAIST_DAMP);q.copy(sw).multiply(tw)}}
+      tinv.copy(tw).invert();sw.copy(q).multiply(tinv);tw.slerp(QI,fast?.92:WAIST_DAMP);q.copy(sw).multiply(tw)}}
     body.position.set(RX,RY,RZ);
     // ---------- ajustes finos por cima ----------
     const calm=!!p.cele;// comemorando: sem camadas procedurais (nada de torcer cintura)

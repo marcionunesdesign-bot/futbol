@@ -1,6 +1,6 @@
 // FUTBOL — motor visual 3D da partida (Three.js)
 import * as T from './three.module.min.js';
-import {loadAssets,makePlayer} from './players3d.js?v=29';
+import {loadAssets,makePlayer} from './players3d.js?v=30';
 export {loadAssets};
 
 const L=105,W=68,GW=7.32,GH=2.44;
@@ -257,6 +257,7 @@ export class Engine{
     P.h=0;P.x=null;P.inf=inf;this.s.add(P.root);this.pl.set(id,P);return P}
   draw(v,dt,info,zoom,intro){
     if(!this.ready)return;this.time+=dt;const t=this.time;
+    const nowR=performance.now()/1000;const rdt=this._lr?Math.min(.1,Math.max(.001,nowR-this._lr)):dt;this._lr=nowR;const hdt=Math.min(dt,rdt*1.6);// giro do corpo no máximo 1,6x mais rápido que o normal
     // bola
     const b=v.b;let bx=wx(b.x),bz=wz(b.y),by=Math.max(0,b.z||0)+.19;const fly=v.fly;
     // gol: a bola fica dentro da rede e a rede estufa
@@ -285,7 +286,7 @@ export class Engine{
       let tgt=P.h;const bdist=Math.hypot(bx-x,bz-z);P.runFace=P.runFace?sp>.9:sp>1.6;
       if(p.kick&&fly&&Math.hypot(wx(fly.fx)-x,wz(fly.fy)-z)<2)tgt=Math.atan2(wx(fly.tx)-x,wz(fly.ty)-z);else if(own&&bdist>.15)tgt=Math.atan2(bx-x,bz-z);else if(inf.gk&&Math.abs(x)>L/2-30)tgt=Math.atan2(bx-x,bz-z);// goleiro perto do gol: sempre de frente para a bola (anda de lado/de costas)
       else if(P.runFace)tgt=Math.atan2(P.vx,P.vz);else tgt=Math.atan2(bx-x,bz-z);
-      let dh=tgt-P.h;dh=Math.atan2(Math.sin(dh),Math.cos(dh));const maxT=(own?9:P.runFace?6.5:4)*dt;P.h+=clamp(dh*Math.min(1,dt*(own?12:8)),-maxT,maxT);
+      let dh=tgt-P.h;dh=Math.atan2(Math.sin(dh),Math.cos(dh));const maxT=(own?9:P.runFace?6.5:4)*hdt;P.h+=clamp(dh*Math.min(1,hdt*(own?12:8)),-maxT,maxT);
       // chute
       let kick=0;if(p.kick){if(!this.kick.has(p.id))this.kick.set(p.id,t)}const k0=this.kick.get(p.id);if(k0!=null){kick=(t-k0)/.6;if(kick>=1){this.kick.delete(p.id);kick=0}}
       // passada calculada pela velocidade real na tela: pé não "patina" no gramado
@@ -298,7 +299,7 @@ export class Engine{
       if(kick){if(P.kickH==null){P.kickH=by;if(p.kk==='shot'&&by>1.45&&!inf.gk)P.bikeT=t}pose.ballH=P.kickH}else P.kickH=null;
       if(P.bikeT&&t-P.bikeT<2.6)pose.skill={k:'bike',a:t-P.bikeT};else P.bikeT=null;
       // drible de efeito: giro 360 quando muda de direção bruscamente com a bola no pé
-      if(own&&!kick&&Math.abs(P.trn||0)>4.2&&sp>1.4&&(!P.spinT||t-P.spinT>4.5))P.spinT=t;
+      if(own&&!kick&&Math.abs(P.trn||0)>5.2&&sp>2.2&&(!P.spinT||t-P.spinT>14)&&(P.spinOK??(P.spinOK=Math.random()<.35)))P.spinT=t;// giro 360: raro e só para alguns jogadores
       if(P.spinT&&t-P.spinT<1.2&&own)pose.skill={k:'spin',a:t-P.spinT};
       // goleiro: lê o chute e mergulha no canto onde a bola vai
       let ox=0,oz=0;
@@ -331,7 +332,7 @@ export class Engine{
         if(Math.abs(rel)>2.1)pose.back=1;else if(Math.abs(rel)>1.0)pose.side=Math.sign(rel)}
       // inclina na curva e freia
       const turn=(P.lastH!=null?Math.atan2(Math.sin(P.h-P.lastH),Math.cos(P.h-P.lastH))/Math.max(dt,1e-3):0);P.lastH=P.h;
-      P.lean=(P.lean||0)+(clamp(-turn*sp*.012,-.22,.22)-(P.lean||0))*Math.min(1,dt*6);pose.lean=P.lean;P.trn=(P.trn||0)+(clamp(turn,-8,8)-(P.trn||0))*Math.min(1,dt*8);pose.turn=P.trn;pose.own=own?1:0;pose.spd=sp;
+      P.lean=(P.lean||0)+(clamp(-turn*sp*.012,-.22,.22)-(P.lean||0))*Math.min(1,hdt*6);pose.lean=P.lean;P.trn=(P.trn||0)+(clamp(turn,-8,8)-(P.trn||0))*Math.min(1,hdt*8);pose.turn=P.trn;pose.own=own?1:0;pose.spd=sp;
       const acc=(sp-(P.lastSp??sp))/Math.max(dt,1e-3);P.lastSp=sp;P.brk=(P.brk||0)+((acc<-14&&sp>1.5?1:0)-(P.brk||0))*Math.min(1,dt*5);if(P.brk>.05)pose.brake=P.brk;
       // domínio: bola chegando alta perto do jogador
       if(fly&&fly.kind!=='shot'&&by>.5&&bdist<1.6&&!inf.gk){pose.trap=by>1.15?'chest':'thigh'}

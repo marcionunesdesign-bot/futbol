@@ -1032,8 +1032,8 @@ body.light .btn:not(.ghost),body.light .seg button.on,body.light .tabs button.on
 #modal.fort-modal>.frame,#modal.cele-modal>.frame{border-radius:18px!important;max-height:calc(var(--vh) - 28px)!important;width:auto!important;height:auto!important;margin:auto}
 #modal.fort-modal>.frame{background:transparent!important;box-shadow:none!important;border:0!important;padding:0!important}
 
-/* celular em pé: campo maior (menos achatado) */
-@media (max-width:760px) and (orientation:portrait){.pitchbox canvas{aspect-ratio:auto!important;height:min(58vh,560px)!important}}
+/* celular em pé: campo em tela larga (16:9), como na TV */
+@media (max-width:760px) and (orientation:portrait){.pitchbox canvas{aspect-ratio:16/9!important;height:auto!important;width:100%!important}}
 /* celular deitado: barra de controles compacta, nada escondido nas bordas */
 @media (max-height:520px){
   .pitchbox .mbar{left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:6px}
