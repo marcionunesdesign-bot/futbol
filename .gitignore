@@ -1,0 +1,7 @@
+public/
+__pycache__/
+*.pyc
+.DS_Store
+# dados do servidor (contas, saves, ligas) NUNCA entram aqui
+*.sqlite
+onzemanager-data/

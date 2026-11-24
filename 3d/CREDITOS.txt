@@ -1,0 +1,8 @@
+FUTBOL — motor 3D
+- Three.js (MIT) — https://threejs.org
+- Jogadores: "Universal Base Characters" de Quaternius (CC0 / domínio público) — https://quaternius.com
+- Animações: "Universal Animation Library" 1 e 2 de Quaternius (CC0 / domínio público)
+Uniformes, cabelos, números, ajustes de movimento, estádio e torcida são gerados pelo próprio jogo.
+
+Jogadores 3D (pl1.glb): modelo gerado no Magnific (Tripo) para a Onda Sites, com esqueleto da Universal Base Characters (Quaternius, CC0).
+Animações de captura de movimento: Mixamo (Adobe), uso em jogos permitido pelos termos do Mixamo; retargetadas para o esqueleto do jogador.
