@@ -291,7 +291,7 @@ export class Engine{
       let tgt=P.h;const bdist=Math.hypot(bx-x,bz-z);P.runFace=P.runFace?sp>.9:sp>1.6;
       if(p.kick&&fly&&Math.hypot(wx(fly.fx)-x,wz(fly.fy)-z)<2)tgt=Math.atan2(wx(fly.tx)-x,wz(fly.ty)-z);else if(own&&bdist>.15)tgt=Math.atan2(bx-x,bz-z);else if(inf.gk&&Math.abs(x)>L/2-30)tgt=Math.atan2(bx-x,bz-z);// goleiro perto do gol: sempre de frente para a bola (anda de lado/de costas)
       else if(P.runFace)tgt=Math.atan2(P.vx,P.vz);else tgt=Math.atan2(bx-x,bz-z);
-      let dh=tgt-P.h;dh=Math.atan2(Math.sin(dh),Math.cos(dh));const maxT=(own?9:P.runFace?6.5:4)*hdt;P.h+=clamp(dh*Math.min(1,hdt*(own?12:8)),-maxT,maxT);
+      let dh=tgt-P.h;dh=Math.atan2(Math.sin(dh),Math.cos(dh));const ak=p.anim&&p.anim.k;if(ak==='slide'||ak==='fall'||ak==='getup')dh=0;/* no chão não gira o corpo (o giro torcia a cintura) */const maxT=(own?9:P.runFace?6.5:4)*hdt;P.h+=clamp(dh*Math.min(1,hdt*(own?12:8)),-maxT,maxT);
       // chute
       let kick=0;if(p.kick){if(!this.kick.has(p.id))this.kick.set(p.id,t)}const k0=this.kick.get(p.id);if(k0!=null){kick=(t-k0)/.6;if(kick>=1){this.kick.delete(p.id);kick=0}}
       // passada calculada pela velocidade real na tela: pé não "patina" no gramado

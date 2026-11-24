@@ -132,6 +132,7 @@ export function makePlayer(o){
   const B={};model.traverse(b=>{if(b.isBone)B[b.name]=b});
   /* ossos sujeitos ao limitador (todos menos dedos) e estado do relógio visual */
   const GB=['pelvis','spine_02','foot_l','foot_r','calf_l','calf_r','hand_l','hand_r','Head','upperarm_l','upperarm_r'];const gv=new T.Vector3();
+  const SPN=['spine_01','spine_02','spine_03'];const sq=new T.Quaternion();
   const REST=new Map();for(const k in B)REST.set(B[k],B[k].quaternion.clone());/* pose de repouso de cada osso */
   const LB=Object.values(B).filter(b=>!/_0[123]_|thumb|index|middle|ring|pinky/.test(b.name));const PQ=new Map();let spKey=null,spR=0;
   // mão relaxada: dedos levemente dobrados (o modelo vem de mão espalmada)
@@ -283,6 +284,9 @@ export function makePlayer(o){
     if((!o.gk||!(p.gkA||p.dive||special==='catch'||special==='catchHigh'||special==='punch')))for(const [b,q] of FG)b.quaternion.copy(q);/* dedos: as animações deixam os dedos sem pose (a mão "rasga"); aqui ficam levemente fechados */
     {/* braços afastados do quadril quando parado/andando: a mão não atravessa mais o calção */const st=Math.max(0,1-sp/3.2);if(st>0&&!special&&!p.dive&&!p.gkA&&!kw&&!p.cele&&!p.hold&&!p.card&&!p.flagUp&&!p.sit){const ab=.2*st;rot('upperarm_l',[[Z,ab]]);rot('upperarm_r',[[Z,-ab]])}}
     if(special==='slide'||special==='fall'){/* carrinho/queda: a parte mais baixa do corpo encosta no gramado (nada de deitar flutuando) */root.updateMatrixWorld(true);let mn=9;const ry=root.position.y;for(const n of GB){const b=B[n];if(!b)continue;b.getWorldPosition(gv);mn=Math.min(mn,gv.y-ry)}if(mn<9){const want=.07;const d=mn-want;if(d>.02)body.position.y-=d*Math.min(1,(an<.15?an/.15:1))}}
+    if(!(special==='slide'||special==='fall'||p.dive||p.gkA||calm)){/* limite da coluna: a soma do que a coluna dobra e torce (quadril até o peito) não passa de um corpo de verdade */
+      const cap=(kw>.05||p.kick?42:32)/57.3;let tot=0;for(const n of SPN){const b=B[n];if(!b)continue;const r=REST.get(b);const d=Math.min(1,Math.abs(r.x*b.quaternion.x+r.y*b.quaternion.y+r.z*b.quaternion.z+r.w*b.quaternion.w));tot+=2*Math.acos(d)}
+      if(tot>cap){const f=cap/tot;for(const n of SPN){const b=B[n];if(!b)continue;sq.copy(b.quaternion);b.quaternion.copy(REST.get(b)).slerp(sq,f)}}}
     /* limitador de articulações: nenhum osso gira mais rápido que um corpo de verdade (em tempo real).
        É a trava final contra contorção: vale para qualquer velocidade do jogo e qualquer mistura de movimentos */
     {const lim=(kw>.05||p.kick||p.gkA||p.dive)?34:(fast?16:20);const mx=lim*Math.max(1/120,Math.min(.05,rdt||1/60));
