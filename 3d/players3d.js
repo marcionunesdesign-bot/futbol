@@ -229,7 +229,7 @@ export function makePlayer(o){
     // ---------- chute / cabeceio (por cima da locomoção, com entrada e saída suaves) ----------
     let kw=0;
     if(p.skill&&p.skill.k==='bike'){}
-    else if(p.kick&&!(p.kk==='throw'||p.kk==='gthrow')){const k=p.kick;const base=p.kk==='head'?A.head:p.kk==='pass'?A.pass:p.kk==='long'||p.kk==='cross'?A.long:A.shot;
+    else if(p.kick&&!(p.kk==='throw'||p.kk==='gthrow')){const k=p.kick;const base=p.kk==='head'?A.head:p.kk==='pass'?A.pass:p.kk==='long'||p.kk==='cross'?A.long:p.kk==='setshot'&&A.pen?A.pen:A.shot;/* bola parada (falta/pênalti): chute plantado, sem a perna voando */
       let b2=base;
       const n=side(b2,FT);if(n){const big=b2===A.scissor;kw=big?1:Math.min(1,k/.13,(1-k)/.25);kw=Math.max(0,Math.min(1,kw));kw=kw*kw*(3-2*kw);P(n,kw,big?MX[n].hit*Math.min(1,k/.5)+Math.max(0,k-.5)*1.6:kickS(n,k,p.kk==='head'?.04:.26));if(big)locoW=0}}
     if(p.skill&&p.skill.k==='bike'&&A.scissor){// bicicleta: sobe, chuta no alto, cai e levanta (sem cortar no meio)
@@ -277,6 +277,8 @@ export function makePlayer(o){
       rot('spine_01',[[X,S.lean*run+(p.tired||0)*.12*Math.min(1,sp/2)]]);const sw=Math.sin(phase*6.283);rot('upperarm_l',[[X,-sw*.22*run*S.arm]]);rot('upperarm_r',[[X,sw*.22*run*S.arm]]);
       rot('spine_02',[[Z,sw*.05*(S.heavy*run+trot*.4)]]);if(p.own&&p.slow)rot('spine_01',[[X,.08]])}
     if(p.rest&&!kw&&!special&&!p.gkA){/* (14) cansado na parada: tronco curvado, cabeça baixa */rot('spine_01',[[X,.22*p.rest]]);rot('spine_02',[[X,.16*p.rest]]);rot('Head',[[X,.25*p.rest]])}
+    if(p.skill&&p.skill.k==='feint'&&!kw&&!special){/* finta de corpo: ombro e quadril caem para um lado e o jogador explode para o outro */const a=p.skill.a,s=p.skill.s||1;const f1=Math.sin(Math.min(1,a/.28)*Math.PI*.5)*(a<.28?1:Math.max(0,1-(a-.28)/.12));const f2=a>.28?Math.sin(Math.min(1,(a-.28)/.3)*Math.PI):0;
+      body.rotation.z+=(-s*.2*f1+s*.12*f2);rot('spine_02',[[Z,-s*.12*f1],[Y,-s*.1*f1]]);body.position.y-=.05*f1}
     if(p.tk&&!kw&&!special){/* toque visível na bola: o pé dá um pequeno chute curto */const e=Math.sin(Math.min(1,p.tk.a/.22)*Math.PI);rot('calf_'+p.tk.l,[[X,-.35*e]]);rot('thigh_'+p.tk.l,[[X,-.18*e]])}
     if(p.shield&&!kw&&!special){const s=p.shield.s,k=p.shield.k;const sd=s>0?'r':'l';rot('upperarm_'+sd,[[Z,(s>0?-1:1)*.55*k]]);rot('lowerarm_'+sd,[[Y,.3*k]])}
     if(p.plant&&!kw&&!special){const e=Math.sin(Math.min(1,p.plant.a/.32)*Math.PI);body.rotation.z+=-p.plant.s*.14*e;body.position.y-=.06*e}

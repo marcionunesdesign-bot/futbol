@@ -1,6 +1,6 @@
 // FUTBOL — motor visual 3D da partida (Three.js)
 import * as T from './three.module.min.js';
-import {loadAssets,makePlayer} from './players3d.js?v=36';
+import {loadAssets,makePlayer} from './players3d.js?v=37';
 export {loadAssets};
 
 const L=105,W=68,GW=7.32,GH=2.44;
@@ -290,7 +290,7 @@ export class Engine{
       const dx=P.vx*dt,dz=P.vz*dt,sp=Math.hypot(P.vx,P.vz);
       // direção: com histerese entre "olhar para onde corre" e "olhar para a bola", e giro com velocidade máxima
       let tgt=P.h;const bdist=Math.hypot(bx-x,bz-z);P.runFace=P.runFace?sp>.9:sp>1.6;
-      {const oi=v.own!=null&&info.get(v.own);if(oi&&oi.side!==inf.side&&!inf.gk&&bdist<14&&sp<4.6&&!p.kick){const mvA=Math.atan2(P.vx,P.vz),tb=Math.atan2(bx-x,bz-z);let r=Math.atan2(Math.sin(mvA-tb),Math.cos(mvA-tb));if(Math.abs(r)>1.4)P.runFace=false}}/* (11) defensor recua de frente para o atacante */
+      {const oi=v.own!=null&&info.get(v.own);if(oi&&oi.side!==inf.side&&!inf.gk&&bdist<14&&sp<3.2&&!p.kick){const mvA=Math.atan2(P.vx,P.vz),tb=Math.atan2(bx-x,bz-z);let r=Math.atan2(Math.sin(mvA-tb),Math.cos(mvA-tb));if(Math.abs(r)>1.4)P.runFace=false}}/* (11) defensor recua de frente para o atacante */
       if(p.kick&&fly&&Math.hypot(wx(fly.fx)-x,wz(fly.fy)-z)<2)tgt=Math.atan2(wx(fly.tx)-x,wz(fly.ty)-z);else if(own&&bdist>.15)tgt=Math.atan2(bx-x,bz-z);else if(inf.gk&&Math.abs(x)>L/2-30)tgt=Math.atan2(bx-x,bz-z);// goleiro perto do gol: sempre de frente para a bola (anda de lado/de costas)
       else if(P.runFace)tgt=Math.atan2(P.vx,P.vz);else tgt=Math.atan2(bx-x,bz-z);
       let dh=tgt-P.h;dh=Math.atan2(Math.sin(dh),Math.cos(dh));const ak=p.anim&&p.anim.k;if(ak==='slide'||ak==='fall'||ak==='getup')dh=0;/* no chão não gira o corpo (o giro torcia a cintura) */const maxT=(own?9:P.runFace?6.5:4)*hdt;P.h+=clamp(dh*Math.min(1,hdt*(own?12:8)),-maxT,maxT);
@@ -313,7 +313,7 @@ export class Engine{
       if(P.bikeT&&t-P.bikeT<2.6)pose.skill={k:'bike',a:t-P.bikeT};else P.bikeT=null;
       // drible de efeito: giro 360 quando muda de direção bruscamente com a bola no pé
       /* dribles de efeito vindos do motor: roleta (giro 360), pedalada (pernas por cima da bola); o chapéu é o toque + a bola no alto */
-      if(p.trick&&!kick){if(p.trick.k==='roleta')pose.skill={k:'spin',a:p.trick.a*1.1};else if(p.trick.k==='pedalada'&&p.trick.a<.75)pose.skill={k:'step',a:p.trick.a}}
+      if(p.trick&&!kick){if(p.trick.k==='finta'&&p.trick.a<.6)pose.skill={k:'feint',a:p.trick.a,s:p.trick.s};else if(p.trick.k==='pedalada'&&p.trick.a<.75)pose.skill={k:'step',a:p.trick.a}}
       // goleiro: lê o chute e mergulha no canto onde a bola vai
       let ox=0,oz=0;
       if(inf.gk&&fly&&fly.kind==='shot'&&fly.side!==inf.side&&fly.t!=null&&fly.dur&&Math.abs(wx(fly.tx)-x)<9){
@@ -341,8 +341,9 @@ export class Engine{
       // lateral: segura a bola acima da cabeça
       if(v.setup&&v.setup.kind==='lateral'&&v.setup.taker===p.id){pose.throwPrep=1;P.throwing=1}else P.throwing=0;
       // anda de costas ou de lado quando o corpo está virado para a bola e o movimento é para outro lado
-      if(!own&&!P.glide&&sp>.6&&sp<6.5&&!kick&&!pose.dive){const mvA=Math.atan2(dx,dz);let rel=mvA-P.h;rel=Math.atan2(Math.sin(rel),Math.cos(rel));
-        if(Math.abs(rel)>2.1)pose.back=1;else if(Math.abs(rel)>1.0)pose.side=Math.sign(rel)}
+      if(!own&&!P.glide&&sp>.6&&!kick&&!pose.dive){const mvA=Math.atan2(dx,dz);let rel=mvA-P.h;rel=Math.atan2(Math.sin(rel),Math.cos(rel));
+        /* de costas/de lado só no ritmo em que a animação foi feita; mais rápido, vira e corre de frente (pés não deslizam) */
+        if(sp<3.3){if(Math.abs(rel)>2.1)pose.back=1;else if(Math.abs(rel)>1.0)pose.side=Math.sign(rel)}else if(Math.abs(rel)>.9){P.runFace=true;P.h+=clamp(rel,-1,1)*Math.min(1,hdt*10)}}
       // inclina na curva e freia
       const turn=(P.lastH!=null?Math.atan2(Math.sin(P.h-P.lastH),Math.cos(P.h-P.lastH))/Math.max(dt,1e-3):0);P.lastH=P.h;
       P.lean=(P.lean||0)+(clamp(-turn*sp*.012,-.22,.22)-(P.lean||0))*Math.min(1,hdt*6);pose.lean=P.lean;if(Math.abs(turn)>2.4&&sp>3.6&&!kick){P.plantT=this.time;P.plantS=Math.sign(turn)}if(P.plantT!=null&&this.time-P.plantT<.32)pose.plant={a:this.time-P.plantT,s:P.plantS};/* (4) corte com o pé plantado */P.trn=(P.trn||0)+(clamp(turn,-8,8)-(P.trn||0))*Math.min(1,hdt*8);pose.turn=P.trn;pose.own=own?1:0;pose.spd=sp;
@@ -457,7 +458,7 @@ export class Engine{
     const rk=sm((tq-TT.run)/(TT.kick-hold-TT.run-.05));const Pt=S.Pt;Pt.root.visible=true;Pt.root.position.set(p0.x+(p1.x-p0.x)*rk,0,p0.z+(p1.z-p0.z)*rk);
     {/* olha para onde corre e, nas últimas passadas, vira para o gol (giro suave, sem torcer a cintura) */const hr=Math.atan2(p1.x-p0.x,p1.z-p0.z);let dh=S.h-hr;while(dh>Math.PI)dh-=2*Math.PI;while(dh<-Math.PI)dh+=2*Math.PI;const tw=sm((t-(TT.kick-.45))/.4);Pt.root.rotation.y=t<TT.run?S.h:hr+dh*tw}
     const kk=t>=TT.kick-.26?Math.min(1,(t-(TT.kick-.26))/.6):0;const runV=t>TT.run&&t<TT.kick-.22&&!(hold&&t>TT.kick-.62&&t<TT.kick-.62+hold)?Math.min(.55,(t-TT.run)*1.4):0;
-    Pt.pose({mv:runV,kick:kk>0&&kk<1?kk:0,kk:'shot',left:S.left,t,noDrib:1,look:0});
+    Pt.pose({mv:runV,kick:kk>0&&kk<1?kk:0,kk:'setshot',left:S.left,t,noDrib:1,look:0});
     // bola
     let bx=S.b.x,bz=S.b.z,by=.19;const fk=(t-TT.kick)/TT.fly;
     if(fk>0){const k=Math.min(1,fk);const e=k;bx=S.b.x+(S.tgt.x-S.b.x)*e+S.side.x*S.curl*Math.sin(Math.PI*k);bz=S.b.z+(S.tgt.z-S.b.z)*e+S.side.z*S.curl*Math.sin(Math.PI*k);
