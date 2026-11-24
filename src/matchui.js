@@ -62,7 +62,7 @@ let tipMin=-99;function hideTip(){const t=$('#subtip');if(t)t.hidden=true}
 function tipTick(){const m=st.m;if(!m||st.done||m.minute<55||m.minute-tipMin<8||st.skipping)return;const a=subAdvice();const s=a.subs[0];if(!s&&!a.tac)return;tipMin=m.minute;
   const t=$('#subtip');if(!t)return;t.innerHTML=`<div class="st-txt">💡 <b>Auxiliar</b>${s?`<span class="st-l"><span class="st-k">SAI</span> <b>${esc(s.outN)}</b> <span class="st-m">${s.role} · ⭐${s.oO} · <span style="color:${fisC(s.oF)}">💪${s.oF}%</span> · 📝${s.oR.toFixed(1)}</span></span><span class="st-l"><span class="st-k">ENTRA</span> <b>${esc(s.inN)}</b> <span class="st-m">${s.inPos} · ⭐${s.iO} · <span style="color:${fisC(s.iF)}">💪${s.iF}%</span></span></span><span class="st-l dim">${esc(s.why)} · <b class="sc-v ${s.gain>=1?'good':s.gain>=-1?'warn':'bad'}">${s.gain>0?'+':''}${s.gain}</b></span>`:` ${esc(a.tac.txt)}`}</div><div class="row" style="gap:6px;flex-wrap:nowrap">${s?`<button class="btn xs" data-dosub="${s.outId}:${s.inId}">Trocar</button>`:`<button class="btn xs" data-dotac="${a.tac.k}:${a.tac.v}">Aplicar</button>`}<button class="btn ghost xs" id="tip-x">Agora não</button></div>`;
   t.hidden=false;bindAdvice(t);$('#tip-x').onclick=hideTip;clearTimeout(t._h);t._h=setTimeout(hideTip,14000)}
-function render(){
+function render(){if(st.m&&st.live&&!st.done&&st.m.phase!=='ft'){/* voltando para a partida: torcida de volta, música baixa */try{A.crowd(true);A.fadeMusic(0,.8)}catch(e){}}
   const um=C.nextUserMatch();
   if(!um){$('#v-match').innerHTML=`<div class="frame" style="text-align:center;padding:40px"><h1 class="title">Sem jogos</h1><p class="muted">A temporada terminou.</p><button class="btn" id="b-cont2">Continuar</button></div>`;$('#b-cont2').onclick=()=>$('#b-continue').click();return}
   if(um.type==='BYE'){$('#v-match').innerHTML=`<div class="frame" style="text-align:center;padding:48px"><div class="eyebrow">${esc(um.label)}</div><h1 class="title" style="margin:10px 0">Rodada de folga</h1><p class="muted">Seu time não joga nesta rodada. O elenco treina e recupera condição física.</p><button class="btn big" id="mv-bye">Avançar ▸</button></div>`;$('#mv-bye').onclick=U.err(()=>{C.finishDate(null);U.toast('Rodada de folga concluída.');U.go('home');if(G().lastSummary)$('#b-continue').click()});return}
@@ -291,7 +291,7 @@ function onEvent(e){
     else if(e.type==='save')banner(`Defesaça de ${pn}`,`${T.name} · ${e.min}'`,T.club.acc);}
   if(e.type==='goal'&&st.live&&!st.skipping&&st.mode!=='hl'&&U.PREF.goalReplay!==false)st.goalRp={t:e.t};
   if((e.type==='post'||(e.type==='save'&&Math.random()<.5))&&st.live&&!st.skipping&&st.mode!=='hl'&&U.PREF.goalReplay!==false&&!st.goalRp)st.hlRp={t:e.t,at:performance.now()+1700};
-  if(e.type==='off'&&st.live&&!st.skipping){A.whistle&&A.whistle(1,false,true);banner('IMPEDIMENTO',e.text||'','#e5b10a')}
+  if(e.type==='off'&&st.live&&!st.skipping){A.whistle&&A.whistle(1,false,true,.5);banner('IMPEDIMENTO',e.text||'','#e5b10a')}
   if(e.type==='post'&&st.live&&!st.skipping){A.post&&A.post();banner('NA TRAVE!',e.text||'',m.T[e.side].club.acc)}
   if(e.type==='card'||e.type==='red'||e.type==='sub')sbx();
   if(e.type==='goal'){$('#sc0')&&($('#sc0').textContent=m.T[0].score);$('#sc1')&&($('#sc1').textContent=m.T[1].score);if(live){A.goal(e.side===st.us);try{if(U.PREF.vibe!==false&&e.side===st.us&&navigator.vibrate)navigator.vibrate([90,60,160])}catch(_){}const g=$('#gfx');if(g){g.innerHTML=`<b>GOL!</b>`;setTimeout(()=>{g.innerHTML=''},2700)}}if(st.mode==='hl')st.tail=Math.max(st.tail,3.6)}

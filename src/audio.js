@@ -7,6 +7,7 @@ const DEF={music:true,sfx:true,mv:0.5,sv:0.7,cv:0.7,track:-1,rtrack:-1};
 const S=Object.assign({},DEF,JSON.parse((()=>{try{return localStorage.getItem('c11-audio')}catch(e){return null}})()||'{}'));
 const saveS=()=>{try{localStorage.setItem('c11-audio',JSON.stringify(S))}catch(e){}};
 let onTrack=null;
+let wBus=null;
 function init(){
   if(ctx){if(ctx.state==='suspended')ctx.resume();return}
   try{if(navigator.audioSession)navigator.audioSession.type='playback'}catch(e){}
@@ -15,11 +16,12 @@ function init(){
   ['pointerdown','touchend','keydown','click'].forEach(ev=>document.addEventListener(ev,resumeAll,true));addEventListener('pageshow',resumeAll);addEventListener('focus',resumeAll);
   document.addEventListener('visibilitychange',()=>{if(!ctx)return;if(document.hidden){if(rm&&!rm.el.paused)rm.el.pause()}else setTimeout(resumeAll,150)});
   ctx.onstatechange=()=>{if(ctx.state!=='running'&&!document.hidden)setTimeout(resumeAll,400)};
-  setInterval(()=>{if(ctx&&!document.hidden&&ctx.state!=='running')resumeAll()},2000);
+  setInterval(()=>{if(ctx&&!document.hidden&&ctx.state!=='running')resumeAll();if(ctx&&crowdOn&&real()&&!BED.amb_maraca&&ctx.state==='running')startBeds()},2000);
   master=ctx.createGain();master.connect(ctx.destination);
   comp=ctx.createDynamicsCompressor();comp.threshold.value=-12;comp.ratio.value=3.5;comp.connect(master);
   musicBus=ctx.createGain();musicBus.gain.value=S.music?S.mv*.6:0;musicBus.connect(comp);
   sfxBus=ctx.createGain();sfxBus.gain.value=S.sfx?S.sv:0;sfxBus.connect(comp);
+  /* apitos passam por um filtro que tira o agudo estridente */wBus=ctx.createGain();wBus.gain.value=.62;const wl=ctx.createBiquadFilter();wl.type='lowpass';wl.frequency.value=3300;wl.Q.value=.5;const wh=ctx.createBiquadFilter();wh.type='peaking';wh.frequency.value=2900;wh.gain.value=-5;wh.Q.value=1.2;wBus.connect(wh);wh.connect(wl);wl.connect(sfxBus);
   crowdBus=ctx.createGain();crowdBus.gain.value=S.sfx?S.cv:0;crowdBus.connect(comp);
   const len=ctx.sampleRate*4;noiseBuf=ctx.createBuffer(1,len,ctx.sampleRate);const d=noiseBuf.getChannelData(0);let b0=0,b1=0,b2=0;
   for(let i=0;i<len;i++){const w=Math.random()*2-1;b0=.99765*b0+w*.099;b1=.963*b1+w*.2965;b2=.57*b2+w*1.0526;d[i]=(b0+b1+b2+w*.1848)*.18}
@@ -64,7 +66,7 @@ function pandeiro(t,vol,dest,slap){nz(t,.08,vol*.7,9000,'highpass',dest,.4,.002)
 function bumbo(t,vol,dest){const o=ctx.createOscillator();o.frequency.setValueAtTime(110,t);o.frequency.exponentialRampToValueAtTime(48,t+.12);const g=ctx.createGain();env(g,t,.003,.35,vol);o.connect(g);g.connect(dest);o.start(t);o.stop(t+.5)}
 function prato(t,vol,dest,dur=1.4){nz(t,dur,vol,6000,'highpass',dest,.3,.002);nz(t,dur*.6,vol*.5,3500,'bandpass',dest,.8,.002)}
 function timpano(t,f,vol,dest){const o=ctx.createOscillator();o.frequency.setValueAtTime(f*1.08,t);o.frequency.exponentialRampToValueAtTime(f,t+.08);const g=ctx.createGain();env(g,t,.004,1.1,vol);o.connect(g);g.connect(dest);o.start(t);o.stop(t+1.3);nz(t,.12,vol*.3,400,'lowpass',dest,.8,.001)}
-function apito(t,vol,dest,dur=.3){const o=ctx.createOscillator();o.frequency.value=2700;const l=ctx.createOscillator();l.frequency.value=34;const lg=ctx.createGain();lg.gain.value=110;l.connect(lg);lg.connect(o.frequency);const g=ctx.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.02);g.gain.setValueAtTime(vol,t+dur-.03);g.gain.linearRampToValueAtTime(0,t+dur);o.connect(g);g.connect(dest);o.start(t);l.start(t);o.stop(t+dur+.02);l.stop(t+dur+.02)}
+function apito(t,vol,dest,dur=.3){const o=ctx.createOscillator();o.type='sine';o.frequency.value=2150;const l=ctx.createOscillator();l.frequency.value=28;const lg=ctx.createGain();lg.gain.value=55;l.connect(lg);lg.connect(o.frequency);const g=ctx.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.02);g.gain.setValueAtTime(vol,t+dur-.03);g.gain.linearRampToValueAtTime(0,t+dur);o.connect(g);g.connect(dest);o.start(t);l.start(t);o.stop(t+dur+.02);l.stop(t+dur+.02)}
 // coro de torcida (várias vozes com formante de vogal "ô")
 function coro(f,t,dur,vol,dest,vowel='o'){const F=vowel==='a'?[800,1200]:[450,850];const out=ctx.createGain();out.gain.setValueAtTime(0,t);out.gain.linearRampToValueAtTime(vol,t+.08);out.gain.setValueAtTime(vol,t+dur*.75);out.gain.linearRampToValueAtTime(0,t+dur);
   const f1=ctx.createBiquadFilter();f1.type='bandpass';f1.frequency.value=F[0];f1.Q.value=5;const f2=ctx.createBiquadFilter();f2.type='bandpass';f2.frequency.value=F[1];f2.Q.value=6;
@@ -82,7 +84,7 @@ const TRACKS=[
     if([0,3,6,10,13].includes(s))agogo(t,s===6||s===13,.05,B);
     if([2,5,7,11,14].includes(s)&&bar%2)tamborim(t,.11,B);
     if(bar%4===3&&s>=8)repique(t,.12+(s-8)*.01,B);
-    if(bar%4===0&&s===0)apito(t,.05,B,.25);
+    if(bar%8===0&&s===0)apito(t,.018,B,.18);/* apito da trilha bem discreto */
     if(bar>=4)for(const [ss,n,l] of this.MEL)if(ss===s)coro(N(n-12),t,l*.16+.1,.05,B)}},
  {name:'Samba de Arquibancada',bpm:98,swing:.09,
   CH:[[45,57,64,67,72],[50,57,62,66,72],[43,55,62,65,71],[48,55,64,67,71],[42,57,60,64,69],[47,54,63,66,69],[40,59,62,67,71],[40,56,62,64,68]],
@@ -249,11 +251,11 @@ function goal(ours=true){if(!ctx)return;const t=ctx.currentTime;
 }
 function ohh(k=1){if(!ctx||!crowdOn)return;const t=ctx.currentTime;
   if(BUF.uh||BUF.ooh){bedLevel(.55,.1);setTimeout(()=>ctx&&bedLevel(1,1),2600);const r=Math.random();if(BUF.uh&&r<.55)clip('uh',31.25+(Math.random()<.5?0:3.2),3.2,1.3*k,crowdBus,.08,1.2);else if(BUF.ooh)clip('ooh',2.55,4.2,1.5*k,crowdBus,.06,1.5);else clip('uh',31.25,3.2,1.3*k,crowdBus,.08,1.2);return}coro(N(52),t,1.1,.05*k,crowdBus,'o');const g=ctx.createGain();const f=ctx.createBiquadFilter();f.type='bandpass';f.frequency.setValueAtTime(500,t);f.frequency.linearRampToValueAtTime(320,t+1.2);const s=noise();s.connect(f);f.connect(g);g.connect(crowdBus);env(g,t,.15,1.3,.45*k);s.start(t);s.stop(t+1.6)}
-function whistle(n=1,long=false,short=false){if(!ctx)return;let t=ctx.currentTime+.02;
-  if(BUF.apito){let w=0;for(let i=0;i<n;i++){const lg=long&&i===n-1;if(lg&&BUF.apito2){clip('apito2',0,1.25,1.1,sfxBus,.01,.25,1,w);w+=1.4}else{const d=short?.28:.46;clip('apito',0,d,1.1,sfxBus,.005,.08,1,w);w+=d+.14}}return}for(let i=0;i<n;i++){const d=long&&i===n-1?.9:short?.12:.22;apito(t,.12,sfxBus,d);apito(t,.05,verbIn,d);t+=d+.12}}
+function whistle(n=1,long=false,short=false,vol=1){if(!ctx)return;let t=ctx.currentTime+.02;const WB=wBus||sfxBus;
+  if(BUF.apito){let w=0;for(let i=0;i<n;i++){const lg=long&&i===n-1;if(lg&&BUF.apito2){clip('apito2',0,1.25,1.1*vol,WB,.02,.3,1,w);w+=1.4}else{const d=short?.26:.46;clip('apito',0,d,1.1*vol,WB,.015,.1,1,w);w+=d+.14}}return}for(let i=0;i<n;i++){const d=long&&i===n-1?.9:short?.12:.22;apito(t,.08*vol,WB,d);apito(t,.03*vol,verbIn,d);t+=d+.12}}
 /* apito de início: dois toques curtos e um longo, com a torcida subindo junto */
 function kickoffWhistle(){if(!ctx)return;whistle(1,false,true);setTimeout(()=>whistle(1,true),330);if(crowdOn)setTimeout(()=>{try{roar(.8,2.6,950)}catch(e){}},420)}
-function sub(){if(!ctx)return;if(BUF.apito)clip('apito',0,.3,.6,sfxBus,.005,.08);setTimeout(()=>applause(2.2,.3),350)}
+function sub(){if(!ctx)return;if(BUF.apito)clip('apito',0,.3,.6,wBus||sfxBus,.015,.1);setTimeout(()=>applause(2.2,.3),350)}
 function card(red){if(!ctx)return;whistle(red?2:1,false,true);if(!crowdOn)return;const t=ctx.currentTime+.3;
   nz(t,1.4,red?.35:.22,260,'bandpass',crowdBus,2,.25);for(let i=0;i<(red?10:5);i++){const tt=t+Math.random()*1.2,o=ctx.createOscillator();o.frequency.setValueAtTime(2200+Math.random()*900,tt);o.frequency.linearRampToValueAtTime(1600+Math.random()*600,tt+.5);const g=ctx.createGain();env(g,tt,.05,.5,.012);o.connect(g);g.connect(verbIn);o.start(tt);o.stop(tt+.6)}}
 function foul(){whistle(1,false,true)}
@@ -285,6 +287,6 @@ function shot(){if(!ctx)return;lastTouchT=ctx.currentTime;
 function kickSfx(){if(!ctx)return;const t=ctx.currentTime;bumbo(t,.35,sfxBus);nz(t,.05,.18,1800,'lowpass',sfxBus)}
 function click(){if(!ctx)return;const t=ctx.currentTime;[1,2.7].forEach((m,i)=>osc('sine',1400*m,t,.05/(i+1),.03/(i+1),sfxBus,.001))}
 function set(k,v){S[k]=v;saveS();if(!ctx)return;musicBus.gain.setTargetAtTime(S.music?S.mv*.6:0,ctx.currentTime,.1);sfxBus.gain.setTargetAtTime(S.sfx?S.sv:0,ctx.currentTime,.1);crowdBus.gain.setTargetAtTime(S.sfx?S.cv:0,ctx.currentTime,.1);if(k==='music')music(v)}
-return {kickoffWhistle,fanfare,get loaded(){return Object.keys(BUF).map(k=>k+":"+BUF[k].duration.toFixed(1)+"s@"+BUF[k].sampleRate)},init,preload,touch,trap,pass,shot,music,next,choose,fadeMusic,crowd,excite,goal,ohh,whistle,kick:kickSfx,click,sub,card,foul,corner,save,post,applause,final,set,gate,
+return {get crowdOn(){return crowdOn},get beds(){return Object.keys(BED)},get ctxState(){return ctx?ctx.state:null},kickoffWhistle,fanfare,get loaded(){return Object.keys(BUF).map(k=>k+":"+BUF[k].duration.toFixed(1)+"s@"+BUF[k].sampleRate)},init,preload,touch,trap,pass,shot,music,next,choose,fadeMusic,crowd,excite,goal,ohh,whistle,kick:kickSfx,click,sub,card,foul,corner,save,post,applause,final,set,gate,
   get tracks(){return realOK?RALL.map(t=>t[1]):TRACKS.map(t=>t.name)},get current(){return realOK?(rm?RALL[rm.i][1]:''):TRACKS[cur].name},get trackSel(){return realOK?(S.rtrack??-1):S.track},scene:sceneSet,set onTrack(f){onTrack=f},get S(){return S},get ready(){return !!ctx}};
 })();
