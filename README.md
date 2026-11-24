@@ -11,13 +11,12 @@ Página de apresentação — https://ondasites.com.br/futbol/conheca
 - `pwa/` — ícones, manifest e service worker (vão para a raiz do site)
 
 ## Publicação
-Todo push na branch `main` roda `.github/workflows/publicar.yml`:
-1. `python build.py` gera a pasta `public/`
-2. a pasta é enviada por FTP para `public_html/futbol` (só os arquivos que mudaram)
+Todo push na branch `main` roda `.github/workflows/publicar.yml`, que executa `python build.py` e grava a pasta `public/` na branch `publicado`.
 
-O banco de dados fica **fora** de `public_html` (`onzemanager-data/`) e nunca é enviado nem apagado.
+No HostGator, um cron roda `servidor/futbol-sync.sh` a cada 5 minutos: se a branch `publicado` mudou, copia os arquivos para `public_html/futbol`. Não há senha em lugar nenhum. O script só substitui arquivos, nunca apaga.
 
-Segredos necessários (Settings → Secrets and variables → Actions):
-`FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`.
+O banco de dados fica **fora** de `public_html` (`onzemanager-data/`) e nunca é tocado.
 
-Para voltar uma versão: reverter o commit e dar push (ou rodar o workflow manualmente).
+Log das publicações no servidor: `~/futbol-sync.log`.
+
+Para voltar uma versão: reverta o commit na `main` e dê push.

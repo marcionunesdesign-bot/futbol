@@ -1,34 +1,34 @@
-name: Publicar no HostGator
+name: Publicar
 
+# A cada push na main: monta o jogo e grava o resultado na branch "publicado".
+# O servidor (HostGator) busca essa branch sozinho a cada 5 minutos — sem senha nenhuma.
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 concurrency:
   group: publicar
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   publicar:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
       - name: Montar o jogo
         run: python build.py
-
-      - name: Enviar por FTP (só o que mudou)
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          security: loose
-          local-dir: ./public/
-          server-dir: ./
+      - name: Gravar na branch publicado
+        run: |
+          MSG="$(git log -1 --format=%s | head -c 120) (${GITHUB_SHA::7})"
+          cd public
+          git init -q -b publicado
+          git add -A
+          git -c user.name="github-actions" -c user.email="github-actions@users.noreply.github.com" commit -q -m "$MSG"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" publicado
