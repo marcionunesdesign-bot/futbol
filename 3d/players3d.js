@@ -131,6 +131,8 @@ export function makePlayer(o){
   // cabelo volumoso (black power) para alguns
   const B={};model.traverse(b=>{if(b.isBone)B[b.name]=b});
   /* ossos sujeitos ao limitador (todos menos dedos) e estado do relógio visual */
+  const GB=['pelvis','spine_02','foot_l','foot_r','calf_l','calf_r','hand_l','hand_r','Head','upperarm_l','upperarm_r'];const gv=new T.Vector3();
+  const REST=new Map();for(const k in B)REST.set(B[k],B[k].quaternion.clone());/* pose de repouso de cada osso */
   const LB=Object.values(B).filter(b=>!/_0[123]_|thumb|index|middle|ring|pinky/.test(b.name));const PQ=new Map();let spKey=null,spR=0;
   // mão relaxada: dedos levemente dobrados (o modelo vem de mão espalmada)
   const FG=[];{const fax=[0,0,1];for(const sd of ['l','r'])for(const f of ['index','middle','ring','pinky'])for(const k of [1,2,3]){const b=B[f+'_0'+k+'_'+sd];if(!b)continue;const ang=(k===1?.55:k===2?.75:.5)*(f==='index'?.8:f==='pinky'?1.1:1);FG.push([b,new T.Quaternion().setFromAxisAngle(new T.Vector3(...fax),ang*(sd==='l'?1:-1)*((window.__fsg)||1))])}
@@ -200,7 +202,7 @@ export function makePlayer(o){
       const c=A.cele[(p.cele-1)%5]||A.cele[0];const m=MX[c];if(m){P(c,1,(t*.9)%m.dur);locoW=0}}
     else if((special==='beaten'||special==='stumble')&&A.stumble&&an<.8){const m=MX[A.stumble];P(A.stumble,1,Math.min(m.dur-.02,an*1.3));locoW=0}// driblado / perdeu a bola: tropeça
     else if(special==='lament'&&A.sad){P(A.sad,1,Math.min(MX[A.sad].dur-.05,an*.9));locoW=0}
-    else if(special==='slide'&&A.tackle){const n=side(A.tackle,FT);const m=MX[n];P(n,1,Math.min(m.dur-.02,an*1.45));locoW=0}
+    else if(special==='slide'&&A.tackle){/* carrinho: desliza, fica no chão um instante e levanta com o próprio movimento capturado */const n=side(A.tackle,FT);const m=MX[n];P(n,1,Math.min(m.dur-.02,an*1.42));locoW=0}
     else if(special==='fall'){const tr=A.trip||A.stumble;const d1=(MX[tr]?MX[tr].dur:1)/1.25;if(an<d1)P(tr,1,an*1.25);else if(an<d1+.3&&A.fallen)P(A.fallen,1,an-d1);else if(A.getup)P(A.getup,1,(an-d1-.3)*2.1);locoW=0}
     else if(special==='punch'&&A.gkBlock){P(A.gkBlock,1,kickT(A.gkBlock,Math.min(1,an/.7)),true);locoW=0}
     else if((special==='catch'||special==='catchHigh')&&A.gkCatch){const c=special==='catchHigh'?A.gkCatchHi:A.gkCatch;P(c,1,MX[c].hit*.6+an*.9,false);locoW=0}
@@ -277,6 +279,10 @@ export function makePlayer(o){
     if(p.skill&&p.skill.k==='step'&&!(fast&&spd>1.6)){const a=p.skill.a,dur=.6;if(a<dur){const ph=a/dur*2;const lg=Math.floor(ph)%2?'l':'r';const e=Math.sin((ph%1)*Math.PI);const sg=lg==='r'?1:-1;const env=Math.min(1,a/.08,(dur-a)/.1);
       rot('thigh_'+lg,[[X,-.62*e*env],[Z,sg*.5*e*env]]);rot('calf_'+lg,[[X,.55*e*env]]);rot('spine_01',[[Z,-sg*.16*e*env]]);body.rotation.z+=-sg*.1*e*env}}
     if(p.look!=null&&!special&&!p.dive&&!kw&&!calm&&!p.back&&!p.side){const lk=Math.max(-.7,Math.min(.7,p.look));rot('neck_01',[[Y,lk*.18]]);rot('Head',[[Y,lk*.22]])}
+    {/* punho neutro: as animações dobram a mão em garra; aproxima do repouso */const wk=.65;if(wk>0&&!(o.gk&&(p.gkA||p.dive||special==='catch'||special==='catchHigh'||special==='punch'))){for(const n of ['hand_l','hand_r']){const b=B[n];if(b)b.quaternion.slerp(REST.get(b),wk)}}}
+    if((!o.gk||!(p.gkA||p.dive||special==='catch'||special==='catchHigh'||special==='punch')))for(const [b,q] of FG)b.quaternion.copy(q);/* dedos: as animações deixam os dedos sem pose (a mão "rasga"); aqui ficam levemente fechados */
+    {/* braços afastados do quadril quando parado/andando: a mão não atravessa mais o calção */const st=Math.max(0,1-sp/3.2);if(st>0&&!special&&!p.dive&&!p.gkA&&!kw&&!p.cele&&!p.hold&&!p.card&&!p.flagUp&&!p.sit){const ab=.2*st;rot('upperarm_l',[[Z,ab]]);rot('upperarm_r',[[Z,-ab]])}}
+    if(special==='slide'||special==='fall'){/* carrinho/queda: a parte mais baixa do corpo encosta no gramado (nada de deitar flutuando) */root.updateMatrixWorld(true);let mn=9;const ry=root.position.y;for(const n of GB){const b=B[n];if(!b)continue;b.getWorldPosition(gv);mn=Math.min(mn,gv.y-ry)}if(mn<9){const want=.07;const d=mn-want;if(d>.02)body.position.y-=d*Math.min(1,(an<.15?an/.15:1))}}
     /* limitador de articulações: nenhum osso gira mais rápido que um corpo de verdade (em tempo real).
        É a trava final contra contorção: vale para qualquer velocidade do jogo e qualquer mistura de movimentos */
     {const lim=(kw>.05||p.kick||p.gkA||p.dive)?34:(fast?16:20);const mx=lim*Math.max(1/120,Math.min(.05,rdt||1/60));

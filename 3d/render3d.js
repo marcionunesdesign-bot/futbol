@@ -329,7 +329,7 @@ export class Engine{
       pose.kk=p.kk;
       // animações especiais contadas em tempo real (o relógio do jogo para nas bolas paradas)
       if(p.anim&&P.animId!==p.anim.id+p.anim.k){P.animId=p.anim.id+p.anim.k;P.animT0=t;P.animK=p.anim.k;if(p.anim.k==='slide')this.spray(x,z,P.h)}
-      if(P.animK){const age=t-P.animT0;const lim=P.animK==='fall'?2.3:P.animK==='slide'?1.75:P.animK==='lament'?1.5:1.3;if(age>lim||(own&&!(P.animK==='shoulder'&&age<.6))||(v.setup&&v.setup.taker===p.id))P.animK=null;else pose.anim={k:P.animK,a:age}}if(p.hold&&v.own===p.id)pose.hold=1;
+      if(P.animK){const age=t-P.animT0;const lim=P.animK==='fall'?2.3:P.animK==='slide'?1.93:P.animK==='lament'?1.5:1.3;if(age>lim||(own&&!(P.animK==='shoulder'&&age<.6))||(v.setup&&v.setup.taker===p.id))P.animK=null;else pose.anim={k:P.animK,a:age}}if(p.hold&&v.own===p.id)pose.hold=1;
       // lateral: segura a bola acima da cabeça
       if(v.setup&&v.setup.kind==='lateral'&&v.setup.taker===p.id){pose.throwPrep=1;P.throwing=1}else P.throwing=0;
       // anda de costas ou de lado quando o corpo está virado para a bola e o movimento é para outro lado
@@ -443,8 +443,10 @@ export class Engine{
     // batedor: parado, corrida curta em diagonal e chute com o pé certo
     const lat=(S.left?-1:1)*1.0;const back=3.4;
     const p0={x:S.b.x-S.dir.x*back-S.side.x*lat,z:S.b.z-S.dir.z*back-S.side.z*lat},p1={x:S.b.x-S.dir.x*.55-S.side.x*lat*.32,z:S.b.z-S.dir.z*.55-S.side.z*lat*.32};
-    const rk=sm((t-TT.run)/(TT.kick-TT.run-.05));const Pt=S.Pt;Pt.root.visible=true;Pt.root.position.set(p0.x+(p1.x-p0.x)*rk,0,p0.z+(p1.z-p0.z)*rk);Pt.root.rotation.y=S.h+(S.left?-.25:.25)*(1-rk);
-    const kk=t>=TT.kick-.26?Math.min(1,(t-(TT.kick-.26))/.6):0;Pt.pose({mv:t>TT.run&&t<TT.kick-.2?.45:0,ph:(t-TT.run)*11,kick:kk>0&&kk<1?kk:0,left:S.left,t});
+    const rk=sm((t-TT.run)/(TT.kick-TT.run-.05));const Pt=S.Pt;Pt.root.visible=true;Pt.root.position.set(p0.x+(p1.x-p0.x)*rk,0,p0.z+(p1.z-p0.z)*rk);
+    {/* olha para onde corre e, nas últimas passadas, vira para o gol (giro suave, sem torcer a cintura) */const hr=Math.atan2(p1.x-p0.x,p1.z-p0.z);let dh=S.h-hr;while(dh>Math.PI)dh-=2*Math.PI;while(dh<-Math.PI)dh+=2*Math.PI;const tw=sm((t-(TT.kick-.45))/.4);Pt.root.rotation.y=t<TT.run?S.h:hr+dh*tw}
+    const kk=t>=TT.kick-.26?Math.min(1,(t-(TT.kick-.26))/.6):0;const runV=t>TT.run&&t<TT.kick-.22?Math.min(.55,(t-TT.run)*1.4):0;
+    Pt.pose({mv:runV,kick:kk>0&&kk<1?kk:0,kk:'shot',left:S.left,t,noDrib:1,look:0});
     // bola
     let bx=S.b.x,bz=S.b.z,by=.19;const fk=(t-TT.kick)/TT.fly;
     if(fk>0){const k=Math.min(1,fk);const e=k;bx=S.b.x+(S.tgt.x-S.b.x)*e+S.side.x*S.curl*Math.sin(Math.PI*k);bz=S.b.z+(S.tgt.z-S.b.z)*e+S.side.z*S.curl*Math.sin(Math.PI*k);
@@ -456,11 +458,14 @@ export class Engine{
     this.ball.position.set(bx,by,bz);this.bsh.position.set(bx,.015,bz);if(fk>0&&fk<1.3)this.ball.rotateOnWorldAxis(new T.Vector3(S.side.x,0,S.side.z),dt*30);
     // goleiro: espera, dá um passinho e mergulha no canto (no gol chega atrasado)
     if(S.Pg){const P=S.Pg;const gx=S.g.x-Math.sign(S.dir.x)*.3;const dl=S.tgt.z-0;const dk=sm((t-TT.kick-(S.out==='goal'?.12:.02))/(TT.fly*.8));
-      const reach=S.out==='save'?1:S.out==='goal'?.55:.7;P.root.visible=true;P.root.position.set(gx,0,0);P.root.rotation.y=S.h+Math.PI;
+      const reach=S.out==='save'?1:S.out==='goal'?.55:.7;P.root.visible=true;
+      const sideZ=clamp(S.b.z*.12,-1.2,1.2);/* cobre o canto do lado da bola */const tk0=t-TT.kick;const shuffle=tk0<0?Math.sin(t*5.5)*.09*Math.min(1,t/.6):0;
+      const lunge=tk0>0?sm(tk0/(TT.fly*.8))*clamp(S.tgt.z-sideZ,-1.4,1.4)*(S.out==='goal'?.35:.55):0;/* dá o passo para o lado da bola antes do mergulho */
+      P.root.position.set(gx,0,sideZ+shuffle+lunge);P.root.rotation.y=S.h+Math.PI;
       const ds=Math.sign(-Math.sin(S.h+Math.PI)*dl)||1;const tk=t-TT.kick-(S.out==='goal'?.12:.02);
       if(tk>0){const need=Math.abs(dl),hz=S.endZ||0;if(!S.gkKind)S.gkKind=need>1.5?(hz<.55?'block':'dive'):(S.out==='goal'&&hz>2?'miss':hz>1.9?'catchH':hz>.9?'catchM':hz>.25?'catchL':'scoop');
         const fl=TT.fly*.8;P.pose({t,mv:0,gkA:{kind:S.gkKind,side:ds,reach:need*reach,pre:Math.min(1,tk/fl),post:Math.max(0,tk-fl)}})}
-      else P.pose({ready:1,t})}
+      else P.pose({ready:1,crouch:.8,mv:Math.abs(Math.cos(t*5.5))*.06,side:Math.cos(t*5.5)>0?1:-1,t})}
     // câmera atrás do batedor, aproximando
     const cb=sm(t/1.6),ch=S.sp==='pen'?2.1:3.2,cd=(S.sp==='pen'?7.5:10.5)-cb*1.6;
     this.cam.position.set(S.b.x-S.dir.x*cd+S.side.x*(S.left?.9:-.9),ch,S.b.z-S.dir.z*cd+S.side.z*(S.left?.9:-.9));this.cam.fov=34;this.cam.updateProjectionMatrix();
