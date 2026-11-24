@@ -100,7 +100,7 @@ function bichoInfo(){const g=G();const b=g.bonus||{};const n=14;const w=(b.win||
 function start(mode){
   A.init();const um=st.um;const u=G().user;st.us=um.home===u?0:1;
   const home=um.home===u?C.userTeam():C.aiTeam(um.home),away=um.away===u?C.userTeam():C.aiTeam(um.away);
-  st.m=new C11Match.Match(home,away,{userSide:st.us,sound:ballSfx});
+  st.m=new C11Match.Match(home,away,{userSide:st.us,sound:ballSfx,wkey:(G().season||'')+'-'+(G().round||G().date||0)});
   st.done=false;st.frames=[];st.replay=null;st.tail=0;st.pens=null;st.hm=null;st._hmT=null;st.mode=mode==='quick'?'full':mode;st.speed=U.PREF.speed||1;st.cam=U.PREF.cam||st.cam;st.feedHtml='';
   st.m.onEvent=onEvent;snapClear();tipMin=-99;
   if(mode==='quick'){st.m.runToEnd();finish();return}

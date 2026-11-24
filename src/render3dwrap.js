@@ -1,7 +1,7 @@
 // FUTBOL — ponte para o motor 3D: usa o 2D enquanto o 3D carrega (ou se o aparelho não suportar WebGL)
 const C11Render3D=(()=>{
   const base=()=>{try{return new URL('3d/',location.href.replace(/[#?].*$/,'').replace(/[^/]*$/,'')).href}catch(e){return '3d/'}};
-  let modP=null;const mod=()=>modP||(modP=import(base()+'render3d.js?v=33'));
+  let modP=null;const mod=()=>modP||(modP=import(base()+'render3d.js?v=34'));
   function supported(){try{const c=document.createElement('canvas');return !!(window.WebGL2RenderingContext&&c.getContext('webgl2'))}catch(e){return false}}
   class Hybrid{
     constructor(cv,m,opts){this.r2=new C11Render.Renderer(cv,m,opts);const d2=this.r2.draw.bind(this.r2);this.d2=d2;this.r2.draw=(v,dt)=>this.draw(v,dt);this.cv=cv;this.m=m;this.on=false;this.eng=null;this._a=1;
@@ -45,7 +45,7 @@ const C11Render3D=(()=>{
       for(const p of v.pl)if(!r2.info.get(p.id))r2.buildInfo();
       {// clima e sinalizadores do jogo: sorteados pelo confronto (o mesmo para os dois técnicos no online)
         const M=window.__MVst&&window.__MVst.m;if(M&&this.wxFor!==M){this.wxFor=M;let h=0;const key=M.T[0].name+'|'+M.T[1].name+'|'+((typeof C11!=='undefined'&&C11.G)?C11.G.season+'-'+(C11.G.round||C11.G.date||0):'');for(const ch of key)h=(h*31+ch.charCodeAt(0))>>>0;
-          const w=h%20<3?'chuva':h%20<9?'tarde':'noite';const lab=(window.__MVst.um&&window.__MVst.um.label)||'';const big=/final|semi|taça|clássico/i.test(lab)||h%5===0;this.wxKind=w;this.flKind=big}
+          const w=M.weather||(h%20<3?'chuva':h%20<9?'tarde':'noite');const lab=(window.__MVst.um&&window.__MVst.um.label)||'';const big=/final|semi|taça|clássico/i.test(lab)||h%5===0;this.wxKind=w;this.flKind=big}
         if(this.eng.setWeather)this.eng.setWeather(this.wxKind||'noite');if(this.eng.setFlares&&this.flKind!==this.flSet){this.flSet=this.flKind;this.eng.setFlares(!!this.flKind)}
         if(this.eng.setQuality&&this.gqSet!==((typeof U!=='undefined'&&U.PREF.gq)||'auto')){this.gqSet=(typeof U!=='undefined'&&U.PREF.gq)||'auto';this.eng.setQuality(this.gqSet)}}
       const ik=this.introT?(performance.now()-this.introT)/6000:1;if(ik>=1)this.introT=0;const t0=performance.now();this.eng.draw(v,Math.min(.1,dt||1/60),r2.info,r2.zoom||1,ik<1?ik:null);if(this.eng.quality)this.eng.quality(dt*1000||16);

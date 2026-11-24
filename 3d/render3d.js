@@ -1,6 +1,6 @@
 // FUTBOL — motor visual 3D da partida (Three.js)
 import * as T from './three.module.min.js';
-import {loadAssets,makePlayer} from './players3d.js?v=33';
+import {loadAssets,makePlayer} from './players3d.js?v=34';
 export {loadAssets};
 
 const L=105,W=68,GW=7.32,GH=2.44;
@@ -340,7 +340,7 @@ export class Engine{
       P.lean=(P.lean||0)+(clamp(-turn*sp*.012,-.22,.22)-(P.lean||0))*Math.min(1,hdt*6);pose.lean=P.lean;P.trn=(P.trn||0)+(clamp(turn,-8,8)-(P.trn||0))*Math.min(1,hdt*8);pose.turn=P.trn;pose.own=own?1:0;pose.spd=sp;
       const acc=(sp-(P.lastSp??sp))/Math.max(dt,1e-3);P.lastSp=sp;P.brk=(P.brk||0)+((acc<-14&&sp>1.5?1:0)-(P.brk||0))*Math.min(1,dt*5);if(P.brk>.05)pose.brake=P.brk;
       // domínio: bola chegando alta perto do jogador
-      if(fly&&fly.kind!=='shot'&&by>.5&&bdist<1.6&&!inf.gk){pose.trap=by>1.15?'chest':'thigh'}
+      if(fly&&fly.kind!=='shot'&&by>.5&&bdist<1.6&&!inf.gk){pose.trap=by>1.65?'head':by>1.15?'chest':'thigh'}
       // disputa de cabeça: quem está perto da bola alta salta junto
       if(!inf.gk&&!pose.jump&&by>1.4&&by<3&&bdist<2.2&&fly){pose.jump=clamp(1-(bdist-1)/1.2,0,1)}
       {let lk=Math.atan2(bx-x,bz-z)-P.h;lk=Math.atan2(Math.sin(lk),Math.cos(lk));pose.look=lk}

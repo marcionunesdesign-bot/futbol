@@ -234,6 +234,7 @@ export function makePlayer(o){
     else if(p.skill&&p.skill.k==='spin'&&A.spin&&!(fast&&spd>1.6)){const m=MX[A.spin];kw=Math.min(1,p.skill.a/.12,(1.2-p.skill.a)/.2);kw=Math.max(0,Math.min(1,kw));P(A.spin,kw,Math.min(m.dur-.02,p.skill.a*m.dur/1.2))}
     else if(special==='shoulder'&&A.pass&&an<.6){const n=side(A.pass,FT);const k=Math.min(1,an/.6);kw=Math.min(1,k/.15,(1-k)/.3);kw=Math.max(0,kw);kw=kw*kw*(3-2*kw);P(n,kw,kickT(n,k))}// desarme em pé: estica a perna na bola
     else if(fast&&spd>1.6&&p.trap){}
+    else if(p.trap==='head'&&A.head){kw=.5;P(A.head,kw,MX[A.head].hit*.7)}/* amortece de cabeça */
     else if(p.trap==='thigh'&&A.thigh){kw=.7;P(A.thigh,kw,MX[A.thigh].hit*.9)}
     else if(p.trap&&A.trap){kw=.6;P(A.trap,kw,MX[A.trap].hit*.8)}
     else if(p.jump&&!o.gk&&A.head){kw=1;P(A.head,1,MX[A.head].hit*.85);RY+=.28;locoW=0}
