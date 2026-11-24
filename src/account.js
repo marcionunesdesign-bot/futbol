@@ -2,14 +2,20 @@
 var ACC=(function(){
 'use strict';
 const C=C11;const st={online:/^https?:/.test(location.protocol),user:null,careers:[],timer:null,saving:false,last:0};
-async function api(a,body,qs=''){const r=await fetch(`api/?a=${a}${qs}`,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json','X-Onze':'1'}:{},body:body?JSON.stringify(body):undefined,credentials:'same-origin'});
+async function api(a,body,qs='',keep){const r=await fetch(`api/?a=${a}${qs}`,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json','X-Onze':'1'}:{},body:body?JSON.stringify(body):undefined,credentials:'same-origin',keepalive:!!keep});
   let j;try{j=await r.json()}catch(e){throw new Error('Servidor indisponível.')}if(!j.ok)throw new Error(j.error||'Erro');return j}
 async function init(){if(!st.online)return;try{const j=await api('me');st.user=j.user;if(st.user)await list()}catch(e){st.online=false}}
 async function list(){const j=await api('careers');st.careers=j.careers;return j.careers}
-function meta(){const g=C.G;const c=C.userClub();const di=C.dateInfo();return {club:c.name,div:c.div,season:g.season,seasons:(g.seasonLog||[]).length,titles:(C.trophies?C.trophies().length:0),cid:g.cid,date:di?di.label:'Fim de temporada',manager:g.manager,money:c.money}}
+function meta(){const g=C.G;const c=C.userClub();const di=C.dateInfo();return {club:c.name,div:c.div,season:g.season,seasons:(g.seasonLog||[]).length,titles:(C.trophies?C.trophies().length:0),cid:g.cid,date:di?di.label:'Fim de temporada',manager:g.manager,money:c.money,rev:g.rev||0,savedAt:g.savedAt||0,prog:C.progressOf(g)}}
 function schedule(){if(!st.user||!C.G||!C.G.slot)return;clearTimeout(st.timer);st.timer=setTimeout(push,4000)}
-async function push(){if(!st.user||!C.G||!C.G.slot||st.saving)return;st.saving=true;try{await api('save',{slot:C.G.slot,meta:meta(),data:C.G});st.last=Date.now();const b=document.getElementById('b-cloud');if(b){b.classList.remove('off');b.title='Salvo na nuvem às '+new Date().toLocaleTimeString('pt-BR')}}catch(e){const b=document.getElementById('b-cloud');if(b){b.classList.add('off');b.title='Falha ao salvar na nuvem: '+e.message}}finally{st.saving=false}}
-async function load(slot){const j=await api('load',null,'&slot='+slot);j.data.slot=slot;C.loadObj(j.data);return j.data}
+async function push(keep){if(!st.user||!C.G||!C.G.slot||st.saving)return;st.saving=true;try{const j=await api('save',{slot:C.G.slot,meta:meta(),data:C.G},'',keep);if(j.stale){const b=document.getElementById('b-cloud');if(b){b.classList.add('off');b.title='A nuvem tem uma versão mais avançada desta carreira'}if(window.U&&U.toast)U.toast('A nuvem tem uma versão mais avançada desta carreira (de outro aparelho). Abra pela tela inicial para continuar dela.');return}st.last=Date.now();const b=document.getElementById('b-cloud');if(b){b.classList.remove('off');b.title='Salvo na nuvem às '+new Date().toLocaleTimeString('pt-BR')}}catch(e){const b=document.getElementById('b-cloud');if(b){b.classList.add('off');b.title='Falha ao salvar na nuvem: '+e.message}}finally{st.saving=false}}
+async function load(slot){const j=await api('load',null,'&slot='+slot);j.data.slot=slot;
+  /* abre a cópia mais avançada: nuvem, a atual do aparelho ou a guardada na lista do aparelho */
+  let best=j.data,src='nuvem';const cur=C.current();if(cur&&cur.cid&&cur.cid===j.data.cid){const w=C.newerSave(best,cur);if(w!==best){best=w;src='aparelho'}}
+  if(window.CAR&&j.data.cid){try{const r=await CAR.get(j.data.cid);if(r){const lc=JSON.parse(r.data);const w=C.newerSave(best,lc);if(w!==best){best=w;src='aparelho'}}}catch(e){}}
+  best.slot=slot;C.loadObj(best);if(src==='aparelho'){push();if(window.U&&U.toast)U.toast('Este aparelho tinha uma versão mais avançada: ela foi aberta e enviada para a nuvem.')}return best}
+function flush(){/* fechando ou minimizando: salva agora na nuvem */if(st.user&&C.G&&C.G.slot){clearTimeout(st.timer);st.saving=false;push(true)}}
+if(typeof document!=='undefined'){document.addEventListener('visibilitychange',()=>{if(document.hidden)flush()});addEventListener('pagehide',flush)}
 C.onSave=()=>{schedule();if(window.CAR)CAR.later()};
 function authForm(onDone){
   U.openModal(`<div class="auth"><div class="auth-art"><div class="auth-field"></div><div class="auth-ball">⚽</div><div class="auth-logo">${(()=>{const l=document.querySelector('.logo-h');return l?l.outerHTML:'FUT<br>BOL'})()}</div>

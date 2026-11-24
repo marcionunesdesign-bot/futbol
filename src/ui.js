@@ -651,6 +651,7 @@ var CAR=(function(){let dbp=null,tm=null;
     list:()=>run('readonly',s=>s.getAll()).then(a=>(a||[]).map(x=>({cid:x.cid,meta:x.meta})).sort((a,b)=>b.meta.upd-a.meta.upd)).catch(()=>[]),
     get:cid=>run('readonly',s=>s.get(cid)),del:cid=>run('readwrite',s=>s.delete(cid))}})();
 window.CAR=CAR;
+if(typeof document!=='undefined'){const fl=()=>{try{if(C.G&&C.G.cid&&!C.G._tacBak)CAR.put(C.G)}catch(e){}};document.addEventListener('visibilitychange',()=>{if(document.hidden)fl()});addEventListener('pagehide',fl)}/* fechando o app: guarda na hora */
 function startScreen(){
   const st={div:'D',club:null,name:'',slot:null};
   const el=$('#start');el.hidden=false;$('.app').hidden=true;
@@ -683,8 +684,8 @@ function startScreen(){
     $$('[data-cnew]',el).forEach(b=>b.onclick=()=>{st.slot=+b.dataset.cnew;draw();$('#s-go').scrollIntoView({behavior:'smooth',block:'center'})});
     $$('[data-cload]',el).forEach(b=>b.onclick=err(async()=>{A.init();b.disabled=true;b.textContent='Carregando…';try{await ACC.load(+b.dataset.cload);launch()}catch(e){toast('⚠️ '+esc(e.message));b.disabled=false}}));
     $$('[data-cdel]',el).forEach(b=>b.onclick=err(async()=>{if(!confirm('Apagar esta carreira da nuvem?'))return;await ACC.delCareer(+b.dataset.cdel);draw()}));
-    const sc=$('#s-cont');if(sc)sc.onclick=()=>{A.init();C.load();launch()};
-    $$('[data-lload]',el).forEach(b=>b.onclick=err(async()=>{A.init();if(C.G&&C.G.cid&&C.G.cid!==b.dataset.lload)await CAR.put(C.G);const r=await CAR.get(b.dataset.lload);if(!r)throw new Error('Carreira não encontrada.');C.loadObj(JSON.parse(r.data));launch()}));
+    const sc=$('#s-cont');if(sc)sc.onclick=err(async()=>{A.init();C.load();if(C.G&&C.G.cid){try{const r=await CAR.get(C.G.cid);if(r){const w=C.newerSave(C.G,JSON.parse(r.data));if(w!==C.G)C.loadObj(w)}}catch(e){}}launch()});
+    $$('[data-lload]',el).forEach(b=>b.onclick=err(async()=>{A.init();if(C.G&&C.G.cid&&C.G.cid!==b.dataset.lload)await CAR.put(C.G);const r=await CAR.get(b.dataset.lload);if(!r)throw new Error('Carreira não encontrada.');let g=JSON.parse(r.data);const cur=C.current();if(cur&&cur.cid===g.cid)g=C.newerSave(g,cur);/* nunca abre uma cópia mais velha que a atual */C.loadObj(g);launch()}));
     $$('[data-ldel]',el).forEach(b=>b.onclick=err(async()=>{const x=st.loc.find(y=>y.cid===b.dataset.ldel);if(!confirm(`Apagar a carreira do ${x?x.meta.club:''}? Não dá para desfazer.`))return;await CAR.del(b.dataset.ldel);if(C.G&&C.G.cid===b.dataset.ldel){C.wipe()}st.loc=await CAR.list();draw()}));
     const nc=$('[data-newcar]',el);if(nc)nc.onclick=()=>{$('#s-go').scrollIntoView({behavior:'smooth',block:'center'})};
   };draw();

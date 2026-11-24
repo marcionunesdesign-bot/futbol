@@ -25,6 +25,16 @@ const TXT={
   card:['Cartão amarelo para {p}.'],red:['Vermelho! {p} está expulso.'],
   corner:['Escanteio para o {t}.'],fk:['Falta em {p}.'],inj:['{p} sente e pede atendimento.']
 };
+/* cartas do técnico: trunfos de uso único por partida */
+const CARDS={
+  pressao:{n:'Pressão total',d:'Por 10 minutos o time sobe a marcação e a linha. Cansa mais.',dur:10},
+  retranca:{n:'Retranca',d:'Por 10 minutos o time fecha as linhas lá atrás para segurar o resultado.',dur:10},
+  contra:{n:'Contra-ataque mortal',d:'Por 10 minutos o time espera e sai em velocidade com três jogadores.',dur:10},
+  bronca:{n:'Bronca no time',d:'Por 10 minutos o time fica mais concentrado: passe, chute e desarme melhores.',dur:10},
+  folego:{n:'Fôlego extra',d:'Na hora: todos os jogadores em campo recuperam energia.',dur:0},
+  ensaiada:{n:'Jogada ensaiada',d:'Por 10 minutos escanteios, faltas e cabeçadas ficam mais perigosos.',dur:10},
+  catimba:{n:'Catimba',d:'Por 10 minutos o time toca curto, gasta o tempo e segura a bola.',dur:10}};
+const CARD_KEYS=Object.keys(CARDS);
 /* narração dos lances do meio do jogo (painel de lances) */
 const NARR={
   drib_pedalada:['Pedalada de {p}! Deixou o marcador no chão.','{p} pedala, pedala... e passa!','Que pedalada de {p}!'],
@@ -57,6 +67,7 @@ class Match{
   constructor(home,away,opts={}){
     this.opts=opts;RNG=opts.seed!=null?mulberry(opts.seed):Math.random;this.T=[this.mkTeam(home,0),this.mkTeam(away,1)];
     {/* clima e vento: decididos pelo confronto, iguais para os dois técnicos no online */let h=0;const key=this.T[0].name+'|'+this.T[1].name+'|'+(opts.wkey??opts.seed??'');for(const ch of key)h=(h*31+ch.charCodeAt(0))>>>0;
+      for(const T of this.T){const pool=CARD_KEYS.slice();T.cards=[];for(let i=0;i<3;i++)T.cards.push(pool.splice(Math.floor(R()*pool.length),1)[0]);T.used=[];T.card=null}/* 3 cartas por time */
       this.weather=opts.weather||(h%20<3?'chuva':h%20<9?'tarde':'noite');this.wet=this.weather==='chuva';this.wxHash=h;
       const wa=((h>>>7)%628)/100,ws=(this.weather==='noite'?.5:1.8)*(((h>>>3)%100)/100);this.vento={x:Math.cos(wa)*ws,y:Math.sin(wa)*ws};this.phys={bad:0,first:0,duel:0,slip:0,defl:0,divid:0,postIn:0}}
     this.matchSec=opts.matchSec||300;this.half=this.matchSec/2;this.t=0;this.phase='ready';
@@ -126,11 +137,12 @@ class Match{
     if(this.t>=this.matchSec){this.phase='ft';this.ev('ft',null,'Fim de jogo!');this.finish();return}
     const ps=this.ball.st==='own'?this.ball.own.side:this.ball.st==='fly'?this.ball.fly.side:null;if(ps!==null)this.T[ps].st.pos+=dt;
     this.updateTargets(dt,false);this.move(dt);this.separate();this.updateBall(dt);this.fatigue(dt);
-    if(this.tick%60===0){this.aiSubs();this.aiTactics()}
+    if(this.tick%60===0){this.aiSubs();this.aiTactics();this.aiCards()}
+    this.cardTick();
     // empolgação (para áudio/câmera)
     const b=this.ball;const dg=Math.min(hyp(b.x-0,b.y-W/2),hyp(b.x-L,b.y-W/2));this.excite+=((dg<25?1-dg/25:0)-this.excite)*dt*2;
   }
-  fatigue(dt){for(const T of this.T){const pr=T.tac.press??1;for(const m of this.active(T)){const drain=(m.sprint?.32:.14)*(1+pr*.12)*(1.55-m.a.res/20*.9);m.stam=Math.max(20,m.stam-drain*dt*(this.opts.fatigueMul||1))}}}
+  fatigue(dt){for(const T of this.T){const pr=T.tac.press??1;for(const m of this.active(T)){const drain=(m.sprint?.32:.14)*(1+pr*.12)*(1.55-m.a.res/20*.9)*(this.cardOn(T,'pressao')?1.25:1);m.stam=Math.max(20,m.stam-drain*dt*(this.opts.fatigueMul||1))}}}
   spd(m){return (5.3+m.a.vel*.16)*(.68+.32*m.stam/100)}
   acc(m){return 3.4+(m.a.ace||10)*.2}
 
@@ -140,7 +152,8 @@ class Match{
     // (11) contra-ataque: roubou a bola no próprio campo -> 2 atacantes disparam
     if(poss!=null&&this._poss!=null&&poss!==this._poss&&b.st==='own'&&!dead){const T=this.T[poss];if(depth(b.x,poss)<.5){
         const fw=this.active(T).filter(m=>['ATA','PD','PE','MEI'].includes(T.slots[m.si].role)&&m!==b.own&&m.stam>35).sort((x,y)=>(y.a.vel||10)-(x.a.vel||10)).slice(0,2);
-        for(const m of fw){m.runUntil=tt+2.6;m.runW=clamp(lat(m.y,poss)+(.5-lat(m.y,poss))*.3,.15,.85)}if(fw.length)this.narr('contra',poss,{t:T.name})}}
+        if(this.cardOn(T,'contra')){const extra=this.active(T).filter(m=>['ATA','PD','PE','MEI','MC'].includes(T.slots[m.si].role)&&m!==b.own&&!fw.includes(m)&&m.stam>30).sort((x,y)=>(y.a.vel||10)-(x.a.vel||10))[0];if(extra)fw.push(extra)}/* carta contra-ataque: três saem em velocidade */
+        for(const m of fw){m.runUntil=tt+(this.cardOn(T,'contra')?3.3:2.6);m.runW=clamp(lat(m.y,poss)+(.5-lat(m.y,poss))*.3,.15,.85)}if(fw.length)this.narr('contra',poss,{t:T.name})}}
     if(poss!=null)this._poss=poss;
     for(const T of this.T){
       const s=T.side,O=this.T[1-s];const tac=T.tac;const att=poss===s;
@@ -396,6 +409,25 @@ class Match{
     // placas de publicidade
     if(b.x<-4.3||b.x>L+4.3){b.x=clamp(b.x,-4.3,L+4.3);b.vx*=-.25}if(b.y<-3.8||b.y>W+3.8){b.y=clamp(b.y,-3.8,W+3.8);b.vy*=-.25}}
   narr(k,side,v={}){const now=this.t;const nk=this._nk||(this._nk={});const cd={contra:22,toque:25,area:10,cruz:10,lanc:10}[k]||7;if(now-(this._nl??-9)<2.4||now-(nk[k]??-99)<cd)return;const arr=NARR[k];if(!arr)return;nk[k]=now;this._nl=now;this.ev('lance',side,fill(arr[(this.tick+(v.n||0))%arr.length],v),v.pid?{pid:v.pid}:{})}
+  cardOn(T,k){return T.card&&T.card.k===k&&(T.card.until==null||this.t<T.card.until)}
+  useCard(side,k){const T=this.T[side];if(!T||!T.cards||!T.cards.includes(k)||T.used.includes(k)||this.phase==='ft'||!CARDS[k])return false;
+    if(T.card&&T.card.bak){Object.assign(T.tac,T.card.bak)}T.used.push(k);const c=CARDS[k];const t=T.tac;const bak={ment:t.ment,press:t.press,tempo:t.tempo,width:t.width,line:t.line,pass:t.pass};
+    if(k==='folego'){for(const m of this.active(T))m.stam=Math.min(100,m.stam+18);T.card=null}
+    else{T.card={k,until:this.t+c.dur*this.matchSec/90,bak};
+      if(k==='pressao')Object.assign(t,{press:2,line:2,ment:Math.max(t.ment||0,1),tempo:2});
+      else if(k==='retranca')Object.assign(t,{ment:-2,line:0,width:0,press:0});
+      else if(k==='contra')Object.assign(t,{ment:-1,line:0,press:1,tempo:2,pass:2});
+      else if(k==='catimba')Object.assign(t,{tempo:0,pass:0,press:0})}
+    this.ev('tcard',side,`${T.name} usa a carta: ${c.n}.`,{card:k});return true}
+  cardTick(){for(const T of this.T){if(T.card&&T.card.until!=null&&this.t>=T.card.until){const k=T.card.k;if(T.card.bak)Object.assign(T.tac,T.card.bak);T.card=null;this.ev('tcardEnd',T.side,`Acabou o efeito de ${CARDS[k].n} do ${T.name}.`,{card:k})}}}
+  aiCards(){if(!this.opts.cards)return;/* só quando a tela de cartas estiver ligada */const min=this.minute;if(min<20||this._aiCardMin===min||min%3)return;this._aiCardMin=min;
+    for(const T of this.T){if(!T.ai||T.card||!T.cards)continue;const O=this.T[1-T.side];const diff=T.score-O.score;const has=k=>T.cards.includes(k)&&!T.used.includes(k);
+      const avg=this.active(T).reduce((a,m)=>a+m.stam,0)/Math.max(1,this.active(T).length);let k=null;
+      if(avg<52&&min>=60&&has('folego'))k='folego';
+      else if(diff<0&&min>=55)k=has('pressao')?'pressao':has('bronca')?'bronca':has('ensaiada')?'ensaiada':null;
+      else if(diff>0&&min>=70)k=has('retranca')?'retranca':has('catimba')?'catimba':has('contra')?'contra':null;
+      else if(diff===0&&min>=75)k=has('bronca')?'bronca':has('ensaiada')?'ensaiada':has('pressao')?'pressao':null;
+      if(k)this.useCard(T.side,k)}}
   px(k){const p=this.phys||(this.phys={});p[k]=(p[k]||0)+1}
   netMove(dt){const b=this.ball;if(b.st!=='net')return;b.x+=b.vx*dt;b.y+=b.vy*dt;b.vz=(b.vz||0)-9.8*dt;b.z=Math.max(0,b.z+b.vz*dt);if(b.z===0)b.vz=0;
     const back=b.netX,dir=back>L/2?1:-1;if((b.x-back)*dir>0){b.x=back;b.vx=-b.vx*.12;b.vy*=.4}/* fundo da rede segura a bola */
@@ -493,7 +525,7 @@ class Match{
     if(md<.22&&press<2.2&&!isGk){const v=.55;if(v>best.v)best={k:'clear',v}}
     if(isGk&&best.k==='hold'){best={k:'clear',v:1}}
     // (12) paciência: sem espaço para frente, troca passe seguro em vez de forçar
-    if(safe&&(best.k==='pass'||best.k==='thru')&&best.ps<.55&&md<.66&&safe.v>=best.v*.62&&(tac.tempo??1)<2)best=safe;
+    if(safe&&(best.k==='pass'||best.k==='thru')&&best.ps<(this.cardOn(this.T[m.side],'catimba')?.72:.55)&&md<.66&&safe.v>=best.v*(this.cardOn(this.T[m.side],'catimba')?.45:.62)&&(tac.tempo??1)<2)best=safe;
     m.drib=null;
     if(best.k==='shot')return this.shoot(m);
     if(best.k==='pass')return this.pass(m,best.q,best.ps,best.risk,best.d);
@@ -531,7 +563,7 @@ class Match{
     const wasThrow=!!m.throwIn;const lofted=pt?d>30:(d>27||(risk>.45&&d>15));m.kk=m.throwIn?'throw':isGkP&&d<32&&!pt&&m.gkHold?'gthrow':lofted?'long':'pass';m.throwIn=false;m.gkHold=false;
     const speed=(lofted?15.5:d<15?17:19)*(this.wet&&!lofted?.93:1);let dur=d/speed+(lofted?.25:.05);
     const press=this.nearestOpp(m).d;
-    const acc=clamp(.99-d*.0028*(1.5-m.a.pas/20)-(press<1.8?.07:0)-(lofted?.05:0)-(1-m.stam/100)*.06-(this.wet?.02:0),.55,.985);/* (20) cansado erra mais */
+    const acc=clamp(.99-d*.0028*(1.5-m.a.pas/20)-(press<1.8?.07:0)-(lofted?.05:0)-(1-m.stam/100)*.06-(this.wet?.02:0)+(this.cardOn(this.T[m.side],'bronca')?.025:0),.55,.985);/* (20) cansado erra mais */
     let recv=q;
     if(R()>acc){if(lofted){/* (19) lançamento mal calculado: cai curto ou longo e quica */const ul=hyp(tx-m.x,ty-m.y)||1,e=(R()<.5?-1:1)*rnd(4,9),lat=rnd(-2.5,2.5);tx=clamp(tx+(tx-m.x)/ul*e-(ty-m.y)/ul*lat,-1,L+1);ty=clamp(ty+(ty-m.y)/ul*e+(tx-m.x)/ul*lat,-1,W+1)}else{const ang=R()*6.283,e=rnd(3,8);tx=clamp(tx+Math.cos(ang)*e,-1,L+1);ty=clamp(ty+Math.sin(ang)*e,-1,W+1)}recv=null}
     if(lofted){/* (18) vento desvia a bola alta */tx=clamp(tx+(this.vento?this.vento.x:0)*dur*.3,-1,L+1);ty=clamp(ty+(this.vento?this.vento.y:0)*dur*.3,-1,W+1)}
@@ -566,6 +598,7 @@ class Match{
     let xg=g.base*pf*gkF*(.6+sk/20*.7)*(.82+.18*m.stam/100)*(opt.head?.55:1)*(opt.fk?.6:1);
     if(opt.first)xg*=clamp(.74+((m.a.fin||10)+(m.a.dri||10)-20)*.012,.55,1.05)*(opt.volley?.85:1);/* (9) de primeira: técnica pesa mais */
     if(opt.head)xg*=.86+clamp(opt.run||0,0,7)*.04;
+    if(this.cardOn(T,'bronca'))xg*=1.1;if(this.cardOn(T,'ensaiada')&&(opt.fk||opt.head))xg*=opt.fk?1.5:1.35;/* cartas */
     if(opt.bike)xg*=.62;if(opt.volley&&!opt.bike)xg*=.62;/* voleio: bonito, mas difícil de acertar *//* bicicleta: difícil, mas quando entra é golaço *//* (10) quem chega correndo cabeceia mais forte */
     xg=clamp(xg,.005,.85);
     if(opt.pen)xg=clamp(.74+(((m.a.bp||m.a.fin)+(m.a.cmp||10))/2-12)*.013-((this.gk(O)?this.gk(O).a.ref:10)-12)*.012,.55,.9);
@@ -610,7 +643,7 @@ class Match{
       const foul=d<1.05&&R()<.12+pr*.03+((o.a.agr||10)-10)*.007+(o.a.des<car.a.dri-3?.05:0);
       if(foul){this.foul(o,car);return}
       const tr=car.trick&&this.t-car.trick.t<1.2?(car.trick.ok?.22:-.08):0;/* durante o drible de efeito: bem feito protege, mal feito entrega a bola */
-      const pS=clamp(-tr+.36+(o.a.des-car.a.dri)*.035+(o.a.frc-car.a.frc)*.012+((o.a.agr||10)-10)*.006+((o.a.ace||10)-(car.a.ace||10))*.006-(this.t<car.ctrl?-.12:0),.12,.82);
+      const pS=clamp((this.cardOn(O,'bronca')?.05:0)-tr+.36+(o.a.des-car.a.dri)*.035+(o.a.frc-car.a.frc)*.012+((o.a.agr||10)-10)*.006+((o.a.ace||10)-(car.a.ace||10))*.006-(this.t<car.ctrl?-.12:0),.12,.82);
       const slide=d>1.15||R()<.2;
       if(R()<pS){o.s.tk++;o.r+=.12;O.st.tk++;car.r-=.06;o.fx={k:'desarme',t:this.t};
         this.narr(slide?'carrinho':'desarme',o.side,{p:o.p.n,q:car.p.n,pid:o.id});
@@ -756,6 +789,6 @@ class Match{
   runToEnd(maxSteps=1e6){const dt=1/30;let n=0;while(this.phase!=='ft'&&n<maxSteps){if(this.phase==='ht')this.resumeFromHT();this.step(dt);n++}return this}
   snapshot(){const a=[];this._f=this.flip;for(const T of this.T)for(const m of T.mps)a.push(m.off?null:[m.x,m.y,m.ph,m.fs??m.face]);return {t:this.t,b:[this.ball.x,this.ball.y,this.ball.z],p:a,own:this.ball.own?this.ball.own.id:null,sc:[this.T[0].score,this.T[1].score]}}
 }
-return {mulberry,Match,L,W,GW,depth,lat,toX,toY};
+return {mulberry,Match,CARDS,L,W,GW,depth,lat,toX,toY};
 })();
 if(typeof module!=='undefined')module.exports=C11Match;

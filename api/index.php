@@ -16,6 +16,7 @@ try {
   $db->exec('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL UNIQUE COLLATE NOCASE, name TEXT NOT NULL, pass TEXT NOT NULL, created INTEGER NOT NULL)');
   $db->exec('CREATE TABLE IF NOT EXISTS careers (uid INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, slot INTEGER NOT NULL, meta TEXT NOT NULL, data TEXT NOT NULL, upd INTEGER NOT NULL, PRIMARY KEY (uid, slot))');
   $db->exec('CREATE TABLE IF NOT EXISTS attempts (ip TEXT NOT NULL, t INTEGER NOT NULL)');
+  $db->exec('CREATE TABLE IF NOT EXISTS careers_bak (uid INTEGER NOT NULL, slot INTEGER NOT NULL, meta TEXT NOT NULL, data TEXT NOT NULL, upd INTEGER NOT NULL)');
   // multiplayer: liga entre amigos
   $db->exec('CREATE TABLE IF NOT EXISTS mpl (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL UNIQUE, name TEXT NOT NULL, owner INTEGER NOT NULL, seed INTEGER NOT NULL, status TEXT NOT NULL, fixtures TEXT NOT NULL DEFAULT \'[]\', round INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL)');
   $db->exec('CREATE TABLE IF NOT EXISTS mplm (lid INTEGER NOT NULL, uid INTEGER NOT NULL, uname TEXT NOT NULL, team TEXT, upd INTEGER NOT NULL, PRIMARY KEY (lid, uid))');
@@ -112,7 +113,19 @@ switch ($a) {
     $slot = (int)($in['slot'] ?? 0); if ($slot < 1 || $slot > 99) fail('Espaço de carreira inválido.');
     $data = $in['data'] ?? null; if (!is_array($data)) fail('Dados inválidos.');
     $json = json_encode($data, JSON_UNESCAPED_UNICODE); if (strlen($json) > 10 * 1024 * 1024) fail('Save grande demais.');
-    $meta = json_encode(array_slice((array)($in['meta'] ?? []), 0, 16), JSON_UNESCAPED_UNICODE);
+    $mi = (array)($in['meta'] ?? []); $meta = json_encode(array_slice($mi, 0, 16), JSON_UNESCAPED_UNICODE);
+    $q = $db->prepare('SELECT meta, data, upd FROM careers WHERE uid = ? AND slot = ?'); $q->execute([$u['id'], $slot]); $old = $q->fetch();
+    if ($old) {
+      $om = json_decode($old['meta'], true) ?: [];
+      // versão mais velha não apaga a mais nova (outro aparelho estava desatualizado)
+      $newProg = (int)($mi['prog'] ?? -1); $oldProg = (int)($om['prog'] ?? -1);
+      if (empty($in['force']) && $oldProg >= 0 && $newProg >= 0 && ($oldProg - $newProg) >= 10) out(['ok' => true, 'stale' => true, 'prog' => $oldProg]);
+      // cópia de segurança: guarda as 5 últimas versões
+      if (time() - (int)$old['upd'] > 120) {
+        $db->prepare('INSERT INTO careers_bak (uid, slot, meta, data, upd) VALUES (?, ?, ?, ?, ?)')->execute([$u['id'], $slot, $old['meta'], $old['data'], (int)$old['upd']]);
+        $db->prepare('DELETE FROM careers_bak WHERE uid = ? AND slot = ? AND upd NOT IN (SELECT upd FROM careers_bak WHERE uid = ? AND slot = ? ORDER BY upd DESC LIMIT 5)')->execute([$u['id'], $slot, $u['id'], $slot]);
+      }
+    }
     $db->prepare('INSERT INTO careers (uid, slot, meta, data, upd) VALUES (?, ?, ?, ?, ?) ON CONFLICT(uid, slot) DO UPDATE SET meta = excluded.meta, data = excluded.data, upd = excluded.upd')
        ->execute([$u['id'], $slot, $meta, $json, time()]);
     out(['ok' => true, 'upd' => time()]);
