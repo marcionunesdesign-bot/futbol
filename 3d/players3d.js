@@ -85,7 +85,9 @@ export async function loadAssets(url){
 
 // ---------- materiais ----------
 const matCache=new Map();
-function numTex(n){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.font='800 104px "Barlow Condensed",Arial Narrow,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillStyle='#fff';g.fillText(String(n||''),64,70);const t=new T.CanvasTexture(c);return t}
+function numTex(n){// (26) número nítido de perto: textura 256 px com contorno
+  const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');g.font='800 208px "Barlow Condensed",Arial Narrow,sans-serif';g.textAlign='center';g.textBaseline='middle';
+  g.lineJoin='round';g.lineWidth=10;g.strokeStyle='rgba(255,255,255,.55)';g.strokeText(String(n||''),128,140);g.fillStyle='#fff';g.fillText(String(n||''),128,140);const t=new T.CanvasTexture(c);t.anisotropy=4;return t}
 function bodyMat(kit,skin,hair,style,boot,bootAcc,num,gk,MD){MD=MD||ASSET.models[0];
   const key=[kit.c1,kit.c2,kit.c3,kit.pat,kit.sh,boot,num,gk,MD.i].join('|');if(matCache.has(key))return matCache.get(key);
   const m=new T.MeshStandardMaterial({map:MD.tex,roughness:.78,metalness:0});

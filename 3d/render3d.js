@@ -1,6 +1,6 @@
 // FUTBOL — motor visual 3D da partida (Three.js)
 import * as T from './three.module.min.js';
-import {loadAssets,makePlayer} from './players3d.js?v=31';
+import {loadAssets,makePlayer} from './players3d.js?v=32';
 export {loadAssets};
 
 const L=105,W=68,GW=7.32,GH=2.44;
@@ -248,7 +248,12 @@ export class Engine{
     const m2=mv(a2,clamp(Math.max(bx,0),0,L/2),lz,0,5);a2.pose({mv:m2.mv,t,side:m2.side,back:m2.back,refIdle:1,flagUp:!!(fl&&fl.x>=L/2)});
     for(const f of this.flagMesh)f.rotation.z=Math.sin(t*5)*.15;
   }
-  quality(ms){// qualidade automática: se o aparelho não aguenta, reduz a resolução e as sombras para manter o movimento liso
+  setQuality(q){this.gq=q;const dpr=window.devicePixelRatio||1;// (30) gráfico: automático, leve ou alto
+    if(q==='leve'){this.r.setPixelRatio(Math.min(1,dpr));this.r.shadowMap.enabled=false}
+    else if(q==='alto'){this.r.setPixelRatio(Math.min(2,dpr));this.r.shadowMap.enabled=true;this.qLvl=0}
+    else{this.r.setPixelRatio(Math.min(this.low?1.5:2,dpr));this.r.shadowMap.enabled=(this.qLvl||0)<3}
+    this.r.setSize(this.w||1,this.h||1,false);this.s.traverse(o=>{if(o.material&&o.material.needsUpdate!==undefined)o.material.needsUpdate=true})}
+  quality(ms){if(this.gq==='leve'||this.gq==='alto')return;// qualidade automática: se o aparelho não aguenta, reduz a resolução e as sombras para manter o movimento liso
     this.fq=(this.fq||ms)*.95+ms*.05;this.qN=(this.qN||0)+1;if(this.qN<90)return;this.qN=0;
     if(this.fq>24&&(this.qLvl||0)<3){this.qLvl=(this.qLvl||0)+1;const pr=[1.75,1.35,1,.8][this.qLvl];this.r.setPixelRatio(Math.min(pr,window.devicePixelRatio||1));this.r.setSize(this.w,this.h,false);if(this.qLvl>=2){this.key.shadow.mapSize.set(1024,1024);if(this.key.shadow.map){this.key.shadow.map.dispose();this.key.shadow.map=null}}if(this.qLvl>=3)this.r.shadowMap.enabled=false}}
   resize(w,h,dpr){this.w=w;this.h=h;this.r.setPixelRatio(Math.min(dpr,this.low?1.5:2));this.r.setSize(w,h,false);this.cam.aspect=w/h;this.cam.updateProjectionMatrix()}
@@ -263,8 +268,8 @@ export class Engine{
     // gol: a bola fica dentro da rede e a rede estufa
     if(v.cele){const sg=bx>0?1:-1;if(Math.abs(bx)>L/2-2){bx=sg*(L/2+1.5);bz=clamp(bz,-GW/2+.5,GW/2-.5);by=.2}
       if(!this.netT||this.netSide!==sg||t-this.netT>8){if(!this.celeOn){this.netT=t;this.netSide=sg}}this.celeOn=true}else this.celeOn=false;
-    if(fly&&fly.kind==='shot'&&fly.out==='goal'&&fly.t!=null&&fly.dur&&fly.t/fly.dur>.97){const sg=bx>0?1:-1;if(!this.celeOn&&(!this.netT||t-this.netT>3)){this.netT=t;this.netSide=sg}}
-    if(this.nets){for(const side of [0,1]){const n=this.nets[side];const sg=side?1:-1;let o=0;if(this.netT&&this.netSide===sg){const k=t-this.netT;o=k<1.4?Math.sin(Math.min(1,k/.18)*Math.PI/2)*Math.exp(-k*2.2)*.9:0}n.position.x=n.userData.x0+sg*o;n.scale.y=1-o*.08}}
+    if(fly&&fly.kind==='shot'&&fly.out==='goal'&&fly.t!=null&&fly.dur&&fly.t/fly.dur>.97){const sg=bx>0?1:-1;if(!this.celeOn&&(!this.netT||t-this.netT>3)){this.netT=t;this.netSide=sg;this.netAmp=.75+.55*clamp(Math.abs(bz)/(GW/2),0,1)+.25*clamp((by-.5)/1.8,0,1)}}// (6) no ângulo a rede estufa mais
+    if(this.nets){for(const side of [0,1]){const n=this.nets[side];const sg=side?1:-1;let o=0;if(this.netT&&this.netSide===sg){const k=t-this.netT;o=k<1.6?Math.sin(Math.min(1,k/.18)*Math.PI/2)*Math.exp(-k*2.2)*(this.netAmp||.9):0}n.position.x=n.userData.x0+sg*o;n.scale.y=1-o*.08}}
     // quem tem a bola
     let ownP=null;this._throwP=null;
     // jogadores
@@ -368,12 +373,31 @@ export class Engine{
     if(this._bp){const dx=bx-this._bp.x,dz=bz-this._bp.z;const d=Math.hypot(dx,dz);if(d<5&&d>1e-4){const ax=new T.Vector3(dz,0,-dx).normalize();this.ball.rotateOnWorldAxis(ax,d/.19)}}
     this._bp={x:bx,z:bz};this.ball.position.set(bx,by,bz);this.bsh.position.set(bx,.015,bz);this.bsh.material.opacity=.35/(1+by*.6);
     for(const [id,P] of this.pl)if(!seen.has(id))P.root.visible=false;
+    {// (14) anel no gramado sob quem está com a bola
+      if(!this.ownRing){this.ownRing=new T.Mesh(new T.RingGeometry(.55,.72,40),new T.MeshBasicMaterial({color:'#ffe066',transparent:true,opacity:.8,depthWrite:false,side:T.DoubleSide}));this.ownRing.rotation.x=-Math.PI/2;this.s.add(this.ownRing)}
+      const show=!!ownP&&!v.replay&&intro==null;this.ownRing.visible=show;if(show){this.ownRing.position.set(ownP.x,.035,ownP.z);this.ownRing.material.opacity=.55+.25*Math.sin(t*6)}}
+    {// (5) rastro da bola nos chutes e lançamentos fortes
+      const strong=fly&&(fly.kind==='shot'||fly.kind==='clear'||(fly.kind==='cross'))&&!v.replay;const tr=this.trail||(this.trail=[]);
+      if(strong){tr.push(bx,by,bz);if(tr.length>66)tr.splice(0,3)}else if(tr.length)tr.splice(0,Math.min(tr.length,9));
+      if(!this.trM){const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(new Float32Array(66),3));g.setAttribute('color',new T.BufferAttribute(new Float32Array(66),3));
+        this.trM=new T.Line(g,new T.LineBasicMaterial({vertexColors:true,transparent:true,opacity:.75,blending:T.AdditiveBlending,depthWrite:false}));this.trM.frustumCulled=false;this.s.add(this.trM)}
+      const n=tr.length/3,P=this.trM.geometry.attributes.position.array,Cc=this.trM.geometry.attributes.color.array;for(let i=0;i<n;i++){P[i*3]=tr[i*3];P[i*3+1]=tr[i*3+1];P[i*3+2]=tr[i*3+2];const a=(i+1)/n;Cc[i*3]=a;Cc[i*3+1]=a*.95;Cc[i*3+2]=a*.8}
+      this.trM.geometry.setDrawRange(0,n);this.trM.geometry.attributes.position.needsUpdate=true;this.trM.geometry.attributes.color.needsUpdate=true;this.trM.visible=n>2}
+    {// (19) impedimento: linha traçada no gramado enquanto o bandeirinha sinaliza
+      const fl=v.flag;if(!this.offM){this.offM=new T.Mesh(new T.PlaneGeometry(.22,W),new T.MeshBasicMaterial({color:'#ffd60a',transparent:true,opacity:.75,depthWrite:false}));this.offM.rotation.x=-Math.PI/2;this.offM.position.y=.03;this.s.add(this.offM)}
+      this.offM.visible=!!(fl&&fl.x!=null)&&!v.replay;if(this.offM.visible){this.offM.position.x=wx(fl.x);this.offM.material.opacity=.55+.25*Math.sin(t*8)}}
     // jogadores não se atravessam: afasta levemente quem está colado (só no desenho)
+    if(intro!=null&&intro<.97){// (23) entrada: os dois times perfilados no meio-campo, de frente para a câmera; depois caminham para as posições
+      const k=clamp((intro-.8)/.17,0,1),e=k*k*(3-2*k);const bySide=[[],[]];for(const [id,P] of this.pl){if(!P.root.visible||!P.inf)continue;bySide[P.inf.side?1:0].push(P)}
+      bySide.forEach((arr,sd)=>{arr.sort((a,b)=>(a.inf.num||0)-(b.inf.num||0));arr.forEach((P,i)=>{const lx=(sd?1:-1)*(2.2+i*1.15),lz=2.5;const rx=P.root.position.x,rz=P.root.position.z;
+        P.root.position.set(lx+(rx-lx)*e,0,lz+(rz-lz)*e);P.root.rotation.y=e<.05?0:P.root.rotation.y;if(e<.02)P.pose({mv:0,t})})})}
     {const arr=[];for(const [id,P] of this.pl)if(P.root.visible&&!P.animK)arr.push(P);for(let i=0;i<arr.length;i++)for(let j=i+1;j<arr.length;j++){const a=arr[i].root.position,b=arr[j].root.position;const dx=b.x-a.x,dz=b.z-a.z,d=Math.hypot(dx,dz);if(d>0.001&&d<.62){const k=(.62-d)/2/d;a.x-=dx*k;a.z-=dz*k;b.x+=dx*k;b.z+=dz*k}}}
     this.officials(v,dt,t,bx,bz);
     // câmera de transmissão: fixa no meio-campo, alta, acompanha a bola girando
     // câmera esperta: aproxima nos lances de área, abre no meio-campo
-    const inBox=Math.abs(bx)>L/2-22&&Math.abs(bz)<22;this.zk=(this.zk||1)+(((inBox?1.22:v.dead?1.1:1))-(this.zk||1))*Math.min(1,dt*.8);
+    const inBox=Math.abs(bx)>L/2-22&&Math.abs(bz)<22;{const bp=this._bsp0;const sp=bp?Math.hypot(bx-bp.x,bz-bp.z)/Math.max(dt,1e-3):0;this._bsp0={x:bx,z:bz};this.bsp=(this.bsp||0)+(Math.min(sp,30)-(this.bsp||0))*Math.min(1,dt*2)}
+    const counter=!v.dead&&!fly&&this.bsp>6.2&&Math.abs(bx)<L/2-24;// (2) contra-ataque: câmera abre
+    this.zk=(this.zk||1)+(((inBox?1.22:v.dead?1.1:counter?.86:1))-(this.zk||1))*Math.min(1,dt*.8);
     const Z=(zoom||1)*this.zk;const portrait=this.w<this.h*1.05;
     let tx=bx,tz=bz;if(v.cele&&v.cele.mp){const m=v.cele.mp;tx=wx(v._flipped?L-m.x:m.x);tz=wz(v._flipped?W-m.y:m.y)}
     this.camT.x+=(clamp(tx,-L/2+6,L/2-6)-this.camT.x)*Math.min(1,dt*2.2);this.camT.z+=(clamp(tz*.55,-12,12)-this.camT.z)*Math.min(1,dt*1.6);
@@ -383,6 +407,9 @@ export class Engine{
     const hf=2*Math.atan(span/2/d);this.cam.fov=T.MathUtils.radToDeg(2*Math.atan(Math.tan(hf/2)/this.cam.aspect));this.cam.updateProjectionMatrix();
     this.cam.lookAt(this.camT.x,1.5,this.camT.z);
     if(typeof window!=='undefined'&&window.__dbgCam){this.cam.position.set(bx-5,3.2,bz+9);this.cam.fov=38;this.cam.updateProjectionMatrix();this.cam.lookAt(bx,.9,bz)}
+    if(v.dead&&v.setup&&v.setup.kind==='corner'&&!v.replay&&intro==null){// (3) escanteio visto de trás do gol
+      const sg=bx>0?1:-1;const cp=new T.Vector3(sg*(L/2+11),10.5,-bz*.12);this.cornerCam=this.cornerCam?this.cornerCam.lerp(cp,Math.min(1,dt*3)):this.cam.position.clone().lerp(cp,.15);
+      this.cam.position.copy(this.cornerCam);this.cam.fov=50;this.cam.updateProjectionMatrix();this.cam.lookAt(sg*(L/2-11),1.2,bz*.15)}else this.cornerCam=null;
     if(v.replay&&intro==null){// replay com outro ângulo: atrás do gol ou rente ao gramado
       const sg=bx>0?1:-1;if(v.replayAng==='goal'){this.cam.position.set(sg*(L/2+14),5.5,clamp(bz*.4,-8,8));this.cam.fov=38}else{this.cam.position.set(bx-sg*14,2.6,bz+18);this.cam.fov=40}
       this.cam.updateProjectionMatrix();this.cam.lookAt(bx,1,bz)}
@@ -395,7 +422,9 @@ export class Engine{
     this.key.position.set(this.camT.x-30,60,this.camT.z+40);this.key.target.position.set(this.camT.x,0,this.camT.z);
     // placas animadas e torcida pulando no gol
     if(this.ads)for(const a of this.ads)a.offset.x=(t*.04)%1;
-    if(this.cts){const j=v.cele?Math.abs(Math.sin(t*9))*.006:Math.sin(t*1.3)*.0006;for(const c of this.cts)c.offset.y=j}
+    {const hot=!v.dead&&Math.abs(bx)>L/2-24;this.hype=(this.hype||0)+((hot?1:0)-(this.hype||0))*Math.min(1,dt*1.5)}// (9) torcida levanta nos ataques
+    if(this.cts){const j=v.cele?Math.abs(Math.sin(t*9))*.006:Math.sin(t*1.3)*.0006+Math.abs(Math.sin(t*5.5))*.0024*(this.hype||0);for(const c of this.cts)c.offset.y=j}
+    this.fxStep(rdt,t);if(!this.wearDone)this.addWear();
     if(this.debugCam){const [p,q,f]=this.debugCam;this.cam.position.set(...p);this.cam.fov=f||50;this.cam.updateProjectionMatrix();this.cam.lookAt(...q)}
     this.sprayStep(rdt);this.r.render(this.s,this.cam);
   }
@@ -442,6 +471,28 @@ export class Engine{
     this.time+=dt;this.r.render(this.s,this.cam);
     const txt=fk>1.05?({goal:'GOOOL!',save:'DEFENDEU!',miss:'PRA FORA!',block:'NA BARREIRA!'})[S.out]:null;
     if(t>=S.end){this.cineS=null;return {done:true,txt}}return {done:false,txt}}
+  // ---------- clima, sinalizadores e gramado ----------
+  setWeather(w){if(!this.ready||this.wx===w)return;this.wx=w;const s=this.s;
+    if(!this.wx0)this.wx0={bg:s.background.clone(),fogC:s.fog.color.clone(),fn:s.fog.near,ff:s.fog.far,exp:this.r.toneMappingExposure};const o=this.wx0;
+    s.background.copy(o.bg);s.fog.color.copy(o.fogC);s.fog.near=o.fn;s.fog.far=o.ff;this.r.toneMappingExposure=o.exp;
+    if(w==='tarde'){s.background.set('#7fb0e8');s.fog.color.set('#b9cfe8');s.fog.near=160;s.fog.far=420;this.r.toneMappingExposure=o.exp*1.28}// (7) jogo de tarde
+    if(w==='chuva'){s.background.set('#1b2330');s.fog.color.set('#2a3442');s.fog.near=50;s.fog.far=210;this.r.toneMappingExposure=o.exp*.9}// (8) chuva
+    if(this.rainM)this.rainM.visible=w==='chuva';if(w==='chuva'&&!this.rainM){const n=this.low?1400:3200;const g=new T.BufferGeometry();const P=new Float32Array(n*6);
+      for(let i=0;i<n;i++){const x=(Math.random()-.5)*130,y=Math.random()*40,z=(Math.random()-.5)*95;P.set([x,y,z,x+.05,y-.9,z],i*6)}g.setAttribute('position',new T.BufferAttribute(P,3));
+      this.rainM=new T.LineSegments(g,new T.LineBasicMaterial({color:'#aac4e6',transparent:true,opacity:.35,depthWrite:false}));this.rainM.frustumCulled=false;s.add(this.rainM)}}
+  setFlares(on){if(!this.ready)return;if(!on){if(this.flG)this.flG.visible=false;return}if(this.flG){this.flG.visible=true;return}// (10) sinalizadores atrás dos gols
+    const G=new T.Group();this.flG=G;this.s.add(G);const glow=this.glow;this.flares=[];
+    for(const sg of [-1,1])for(let i=0;i<5;i++){const sp=new T.Sprite(new T.SpriteMaterial({map:glow,color:'#ff3b1f',blending:T.AdditiveBlending,depthWrite:false,transparent:true,fog:false}));sp.scale.set(3,3,1);sp.position.set(sg*(L/2+13+Math.random()*6),6+Math.random()*5,(i-2)*7+Math.random()*3);G.add(sp);this.flares.push(sp)}
+    const n=260;const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(new Float32Array(n*3),3));this.smk=new T.Points(g,new T.PointsMaterial({size:2.4,color:'#d7cfc8',transparent:true,opacity:.28,depthWrite:false}));this.smk.frustumCulled=false;G.add(this.smk);this.smkP=[]}
+  fxStep(dt,t){
+    if(this.rainM&&this.rainM.visible){const P=this.rainM.geometry.attributes.position.array;for(let i=0;i<P.length;i+=6){P[i+1]-=dt*30;P[i+4]-=dt*30;if(P[i+4]<0){const y=38+Math.random()*4;P[i+1]=y;P[i+4]=y-.9}}this.rainM.geometry.attributes.position.needsUpdate=true}
+    if(this.flG&&this.flG.visible){for(const f of this.flares){const k=.75+.25*Math.sin(t*23+f.position.z)*Math.sin(t*7.3+f.position.x);f.material.opacity=k;f.scale.setScalar(2.6+k)}
+      const sp=this.smkP;if(sp.length<260&&Math.random()<.9){const f=this.flares[Math.floor(Math.random()*this.flares.length)];sp.push({x:f.position.x,y:f.position.y,z:f.position.z,vy:1.5+Math.random(),vx:(Math.random()-.5)*.6,life:6})}
+      const P=this.smk.geometry.attributes.position.array;let i=0;this.smkP=sp.filter(q=>(q.life-=dt)>0);for(const q of this.smkP){q.y+=q.vy*dt;q.x+=q.vx*dt;P[i*3]=q.x;P[i*3+1]=q.y;P[i*3+2]=q.z;i++}this.smk.geometry.setDrawRange(0,i);this.smk.geometry.attributes.position.needsUpdate=true}}
+  addWear(){this.wearDone=true;// (27) gramado gasto na pequena área, na marca do pênalti e no círculo central
+    const tex=canvasTex(128,128,(g,w,h)=>{for(let i=0;i<260;i++){const x=w/2+(Math.random()-.5)*w*.8,y=h/2+(Math.random()-.5)*h*.8,r=2+Math.random()*6;const d=Math.hypot(x-w/2,y-h/2)/(w/2);g.fillStyle=`rgba(${110+Math.random()*30|0},${95+Math.random()*25|0},60,${.22*(1-d)})`;g.beginPath();g.arc(x,y,r,0,7);g.fill()}});
+    const mk=(x,z,sx,sz)=>{const m=new T.Mesh(new T.PlaneGeometry(sx,sz),new T.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2}));m.rotation.x=-Math.PI/2;m.position.set(x,.02,z);m.renderOrder=1;this.s.add(m)};
+    for(const sg of [-1,1]){mk(sg*(L/2-3),0,7,12);mk(sg*(L/2-11),0,3.5,3.5)}mk(0,0,6,6)}
   spray(x,z,h){// grama levantada no carrinho
     if(!this.sprG){const n=26*6;const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(new Float32Array(n*3),3));g.setAttribute('color',new T.BufferAttribute(new Float32Array(n*3),3));
       this.sprM=new T.Points(g,new T.PointsMaterial({size:.11,vertexColors:true,transparent:true,opacity:.95,depthWrite:false}));this.sprM.frustumCulled=false;this.s.add(this.sprM);this.sprG=g;this.sprP=[];this.sprN=n}

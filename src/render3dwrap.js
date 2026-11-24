@@ -1,7 +1,7 @@
 // FUTBOL — ponte para o motor 3D: usa o 2D enquanto o 3D carrega (ou se o aparelho não suportar WebGL)
 const C11Render3D=(()=>{
   const base=()=>{try{return new URL('3d/',location.href.replace(/[#?].*$/,'').replace(/[^/]*$/,'')).href}catch(e){return '3d/'}};
-  let modP=null;const mod=()=>modP||(modP=import(base()+'render3d.js?v=31'));
+  let modP=null;const mod=()=>modP||(modP=import(base()+'render3d.js?v=32'));
   function supported(){try{const c=document.createElement('canvas');return !!(window.WebGL2RenderingContext&&c.getContext('webgl2'))}catch(e){return false}}
   class Hybrid{
     constructor(cv,m,opts){this.r2=new C11Render.Renderer(cv,m,opts);const d2=this.r2.draw.bind(this.r2);this.d2=d2;this.r2.draw=(v,dt)=>this.draw(v,dt);this.cv=cv;this.m=m;this.on=false;this.eng=null;this._a=1;
@@ -43,13 +43,29 @@ const C11Render3D=(()=>{
       if(this.eng.cv.style.display==='none')this.place();
       const r2=this.r2;v=v||r2.view();if(v.flip)v=r2.flipView(v);
       for(const p of v.pl)if(!r2.info.get(p.id))r2.buildInfo();
+      {// clima e sinalizadores do jogo: sorteados pelo confronto (o mesmo para os dois técnicos no online)
+        const M=window.__MVst&&window.__MVst.m;if(M&&this.wxFor!==M){this.wxFor=M;let h=0;const key=M.T[0].name+'|'+M.T[1].name+'|'+((typeof C11!=='undefined'&&C11.G)?C11.G.season+'-'+(C11.G.round||C11.G.date||0):'');for(const ch of key)h=(h*31+ch.charCodeAt(0))>>>0;
+          const w=h%20<3?'chuva':h%20<9?'tarde':'noite';const lab=(window.__MVst.um&&window.__MVst.um.label)||'';const big=/final|semi|taça|clássico/i.test(lab)||h%5===0;this.wxKind=w;this.flKind=big}
+        if(this.eng.setWeather)this.eng.setWeather(this.wxKind||'noite');if(this.eng.setFlares&&this.flKind!==this.flSet){this.flSet=this.flKind;this.eng.setFlares(!!this.flKind)}
+        if(this.eng.setQuality&&this.gqSet!==((typeof U!=='undefined'&&U.PREF.gq)||'auto')){this.gqSet=(typeof U!=='undefined'&&U.PREF.gq)||'auto';this.eng.setQuality(this.gqSet)}}
       const ik=this.introT?(performance.now()-this.introT)/6000:1;if(ik>=1)this.introT=0;const t0=performance.now();this.eng.draw(v,Math.min(.1,dt||1/60),r2.info,r2.zoom||1,ik<1?ik:null);if(this.eng.quality)this.eng.quality(dt*1000||16);
       // nomes por cima (canvas 2D transparente)
       const ctx=r2.ctx;ctx.setTransform(r2.dpr||1,0,0,r2.dpr||1,0,0);ctx.clearRect(0,0,r2.cw,r2.ch);
       if(r2.o.labels!==false&&!this.introT){for(const p of v.pl){const inf=r2.info.get(p.id);if(!inf)continue;const own=v.own===p.id;if(!own&&inf.side!==r2.o.userSide)continue;
         const [sx,sy,ok]=(this.eng.screenOf&&this.eng.screenOf(p.id,2.25))||this.eng.project(p.x,p.y,2.25);if(!ok||sx<-30||sx>r2.cw+30)continue;
         const nm=own?`${inf.num} ${inf.name}`:String(inf.num);ctx.font=`700 ${own?13:10}px "Barlow Condensed",sans-serif`;const tw=ctx.measureText(nm).width;
-        ctx.fillStyle=own?'rgba(10,12,10,.8)':'rgba(10,12,10,.45)';ctx.fillRect(sx-tw/2-4,sy-15,tw+8,own?16:13);ctx.fillStyle=own?'#fff36b':'#fff';ctx.textAlign='center';ctx.fillText(nm,sx,sy-(own?3:4))}}
+        ctx.fillStyle=own?'rgba(10,12,10,.8)':'rgba(10,12,10,.45)';ctx.fillRect(sx-tw/2-4,sy-15,tw+8,own?16:13);ctx.fillStyle=own?'#fff36b':'#fff';ctx.textAlign='center';ctx.fillText(nm,sx,sy-(own?3:4));
+        // (15) cansaço: barrinha sob o número dos seus jogadores quando o fôlego passa de 40% gasto
+        if(inf.side===r2.o.userSide&&p.st!=null&&p.st<60){const w=Math.max(tw+8,18),k=p.st/100;ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(sx-w/2,sy+1,w,3);ctx.fillStyle=k<.35?'#ef4444':k<.5?'#f59e0b':'#facc15';ctx.fillRect(sx-w/2,sy+1,w*k,3)}}}
+      // (12) minimapa: campo inteiro no canto, com os dois times e a bola
+      if(!this.introT&&!(typeof U!=='undefined'&&U.PREF.mini===false)){const mw=Math.min(132,r2.cw*.3),mh=mw*68/105,x0=r2.cw-mw-8,y0=r2.ch-mh-8;
+        ctx.fillStyle='rgba(8,30,14,.72)';ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=1;ctx.fillRect(x0,y0,mw,mh);ctx.strokeRect(x0+.5,y0+.5,mw-1,mh-1);
+        ctx.beginPath();ctx.moveTo(x0+mw/2,y0);ctx.lineTo(x0+mw/2,y0+mh);ctx.stroke();ctx.beginPath();ctx.arc(x0+mw/2,y0+mh/2,mh*.13,0,7);ctx.stroke();
+        ctx.strokeRect(x0+.5,y0+mh*.2,mw*.157,mh*.6);ctx.strokeRect(x0+mw-mw*.157-.5,y0+mh*.2,mw*.157,mh*.6);
+        const px=X=>x0+X/105*mw,py=Y=>y0+Y/68*mh;
+        for(const p of v.pl){const inf=r2.info.get(p.id);if(!inf)continue;ctx.fillStyle=inf.side===0?(this.mmC0||'#e11d48'):(this.mmC1||'#f8fafc');if(!this.mmC0&&window.__MVst&&__MVst.m){try{this.mmC0=__MVst.m.T[0].club.kit[0];this.mmC1=__MVst.m.T[1].club.kit[0];if(this.mmC0===this.mmC1)this.mmC1='#f8fafc'}catch(e){}}
+          ctx.beginPath();ctx.arc(px(p.x),py(p.y),v.own===p.id?3.4:2.4,0,7);ctx.fill();if(inf.side===r2.o.userSide){ctx.strokeStyle='rgba(0,0,0,.55)';ctx.stroke()}}
+        if(v.b){ctx.fillStyle='#fff';ctx.strokeStyle='#000';ctx.beginPath();ctx.arc(px(v.b.x),py(v.b.y),2.6,0,7);ctx.fill();ctx.stroke()}}
       // efeitos de lance: DRIBLE! / DESARME! subindo sobre o jogador
       if(!this.introT){const nowp=performance.now()/1000;this.pops=this.pops||[];this.popSeen=this.popSeen||new Set();
         for(const p of v.pl){if(!p.fx)continue;const key=p.id+':'+p.fx.id+p.fx.k;if(this.popSeen.has(key))continue;this.popSeen.add(key);if(this.popSeen.size>300)this.popSeen=new Set([key]);

@@ -1231,3 +1231,13 @@ body.light #modal.recap-modal>.frame{background:linear-gradient(180deg,#14171b,#
 .rs-nav .rs-end{display:inline-flex;padding:0 18px;width:auto;white-space:nowrap}
 .rs-nav .rs-end[hidden],.rs-nav .rs-next[hidden]{display:none}
 .rs-auc{width:100%;margin-top:14px;white-space:normal;height:auto;min-height:46px}
+
+/* placar: cartões e substituições */
+.score .sbx{display:inline-flex;gap:3px;margin:0 4px;vertical-align:middle}.score .sbx:empty{display:none}
+.score .sbx i{font:800 10px/1 'Barlow Condensed',system-ui;font-style:normal;min-width:11px;height:15px;padding:0 2px;border-radius:2px;display:inline-grid;place-items:center;color:#111}
+.score .sbx .cy{background:#facc15}.score .sbx .cr{background:#ef4444;color:#fff}.score .sbx .cs{background:#e2e8f0}
+/* mapa de calor no intervalo */
+.heat{margin-top:12px}.heat-h{font:800 12px 'Barlow Condensed';letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin-bottom:6px;display:flex;justify-content:space-between}
+.heat-f{position:relative;aspect-ratio:105/68;border-radius:8px;overflow:hidden;background:repeating-linear-gradient(90deg,#1f7a35 0 10%,#1b6e30 10% 20%);border:2px solid #ffffff55}
+.heat-f i{position:absolute;width:calc(100%/21*1.9);height:calc(100%/14*1.9);border-radius:50%;transform:translate(-25%,-25%);filter:blur(5px)}
+.heat-f .hc{position:absolute;left:50%;top:0;bottom:0;border-left:2px solid #ffffff55}.heat-f .hm{position:absolute;left:50%;top:50%;width:18%;aspect-ratio:1;border:2px solid #ffffff55;border-radius:50%;transform:translate(-50%,-50%)}
