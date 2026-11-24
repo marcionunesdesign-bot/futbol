@@ -444,7 +444,7 @@ function clubModal(id){const c=clubOf(id);const ps=c.players.map(P).filter(Boole
 /* ---------- eventos globais ---------- */
 function bind(){
   document.addEventListener('click',err(e=>{
-    const t=e.target.closest('[data-recap],[data-offerp],[data-pnav],[data-go],[data-player],[data-close],[data-club],[data-sort],[data-sf],[data-train],[data-rest],[data-int],[data-lg],[data-talk],[data-sell],[data-promote],[data-demote],[data-release],[data-scout],[data-upgrade],[data-bid],[data-pass],[data-open],[data-nextlot],[data-mksearch],[data-bstep],[data-bset],[data-install],[data-austage],[data-austage-close],[data-sellsel],[data-offer],[data-msg],[data-job],[data-nojob],[data-more],[data-fort],[data-look],[data-fac],[data-act],[data-boost],[data-celeok],[data-trophies],[data-cuprule],#b-continue,#b-music,#b-sfx,#b-menu');
+    const t=e.target.closest('[data-recapend],[data-recap],[data-offerp],[data-pnav],[data-go],[data-player],[data-close],[data-club],[data-sort],[data-sf],[data-train],[data-rest],[data-int],[data-lg],[data-talk],[data-sell],[data-promote],[data-demote],[data-release],[data-scout],[data-upgrade],[data-bid],[data-pass],[data-open],[data-nextlot],[data-mksearch],[data-bstep],[data-bset],[data-install],[data-austage],[data-austage-close],[data-sellsel],[data-offer],[data-msg],[data-job],[data-nojob],[data-more],[data-fort],[data-look],[data-fac],[data-act],[data-boost],[data-celeok],[data-trophies],[data-cuprule],#b-continue,#b-music,#b-sfx,#b-menu');
     if(!t)return;A.init();
     if(t.id==='b-music'||t.id==='b-sfx'){volPop(t,t.id==='b-music'?'music':'sfx');return}
     if(t.id==='b-menu'){menuModal('root');return}
@@ -452,6 +452,7 @@ function bind(){
     if(t.id==='b-continue'){cont();return}
     const d=t.dataset;
     if(d.go){e.preventDefault();closeModal();if(d.lgset)S.league=d.lgset;go(d.go);return}
+    if('recapend' in d){closeModal();const g=G();if(g.jobOffers)setTimeout(jobsModal,80);else if(!uiQueue()&&view==='home')vHome();return}
     if('close' in d||t.matches('[data-close]')){closeModal();return}
     if(d.pnav){navPlayer(+d.pnav);return}
     if(d.offerp){const pid=+d.offerp;const amt=+(d.amt||$('#of-amt').value),wage=+(d.wage||$('#of-wage').value);const r=C.makeOffer(pid,amt,wage);renderTop();
@@ -492,8 +493,8 @@ function bind(){
     if('cuprule' in d){openModal(`<div class="eyebrow">Taça Nacional ${G().season}</div><h1 class="title" style="margin:6px 0 10px">Como funciona</h1><p>${esc(C.CUP_RULE)}</p><p class="muted">Sua vaga: <b>${esc((G().cup.qual||{})[G().user]||'—')}</b>. Os jogos da Taça aparecem com a faixa dourada 🏆 no próximo jogo.</p><div class="row"><button class="btn" data-go="league" data-lgset="cup">Ver chaveamento</button><button class="btn ghost" data-close>Fechar</button></div>`);return}
     if('nextlot' in d){S.reveal=null;auStage(true);vAuction();return}
     if('sellsel' in d){const id=+$('#sellsel').value;const p=P(id);const f=+$('#sellmin').value||.8;const v=Math.round(C.valueOf(p)*f/5000)*5000;C.listForSale(id,v);toast(`${esc(p.n)} vai a leilão (mínimo ${money(v)}).`);vAuction();return}
-    if(d.job){C.acceptJob(d.job);closeModal();theme(C.userClub());toast(`Bem-vindo ao ${esc(C.userClub().name)}!`);go('home');return}
-    if('nojob' in d){C.declineJobs();closeModal();toast('Você seguiu no projeto.');return}
+    if(d.job){C.acceptJob(d.job);closeModal();theme(C.userClub());toast(`Bem-vindo ao ${esc(C.userClub().name)}!`);go('home');if(G().lastSummary)setTimeout(seasonModal,120);return}
+    if('nojob' in d){C.declineJobs();closeModal();toast('Você seguiu no projeto.');if(G().lastSummary)setTimeout(seasonModal,120);return}
   }));
   const mkLive=()=>{if(!$('#mk-sort'))return;S.mk={pos:$('#mk-pos').value,div:$('#mk-div').value,max:+$('#mk-max').value||0,q:$('#mk-q').value.trim(),sort:$('#mk-sort').value,min:+$('#mk-min').value||0,hot:$('#mk-hot').checked,young:$('#mk-young').checked};const L=$('#mk-list');if(L)L.innerHTML=mkList()};
   let mkT=null;document.addEventListener('input',e=>{if(e.target.id==='mk-q'){clearTimeout(mkT);mkT=setTimeout(mkLive,220)}});
@@ -507,6 +508,7 @@ function bind(){
 function rerender(){renderTop();go(view)}
 function uiQueue(){const g=G();if(!$('#modal').hidden)return;
   if(g.celeQ&&g.celeQ.length){const c=g.celeQ.shift();C.save();celebrateScreen(c);return true}
+  if(g.lastSummary){seasonModal();return true}/* resumo da temporada pendente: abre assim que der */
   if(g.fortune){const w=(S.lastMatchT||0)+5200-Date.now();if(w>0){clearTimeout(S.fortT);S.fortT=setTimeout(()=>{if(view==='home')uiQueue()},w);return true}fortuneModal(g.fortune);return true}return false}
 function celebrateScreen(c){const club=clubOf(c.club)||C.userClub();const big={liga:'CAMPEÃO',taca:'CAMPEÃO',acesso:'ACESSO!'}[c.k]||'CAMPEÃO';
   openModal(`<div class="cele" style="--k1:${club.kit[0]};--k2:${club.kit[1]}"><canvas class="confetti"></canvas><div class="cele-rays"></div>
@@ -524,8 +526,8 @@ function fortuneResult(f){if(!f.ch){closeModal();toast(`${f.good?'🍀':'⚡'} $
   openModal(`<div class="fort ${f.good?'good':'bad'} done"><div class="fort-card"><div class="fort-front"><div class="fort-tag">Você escolheu: ${esc(f.ch[f.pickI])}</div><div class="fort-ic">${f.ic}</div><h1>${esc(f.t)}</h1><div class="fort-res">${esc(f.res)}</div><button class="btn" data-close>OK</button></div></div></div>`);$('#modal').classList.add('fort-modal');if(view==='home')vHome()}
 function cont(){const g=G();
   if(g.celeQ&&g.celeQ.length){closeModal();uiQueue();return}
+  if(g.lastSummary){seasonModal();return}/* resumo primeiro; os convites vêm ao fechar */
   if(g.jobOffers){jobsModal();return}
-  if(g.lastSummary){seasonModal();return}
   go('match');
 }
 function jobsModal(){const g=G();const j=g.jobOffers;
@@ -573,7 +575,7 @@ function recapModal(s,fresh){const g=G();const R=s.recap||{};const cl=id=>clubOf
   }
   if(fresh&&steps.length){steps[steps.length-1]=steps[steps.length-1].replace(/<\/section>$/,`<button class="btn ghost rs-auc" data-go="auction">🔨 Ver o leilão especial</button></section>`)}
   openModal(`<div class="rs"><div class="rs-track">${steps.join('')}</div>
-    <div class="rs-nav"><button class="btn ghost rs-prev" aria-label="Voltar">‹</button><div class="rs-dots">${steps.map((_,i)=>`<i data-rs="${i}"></i>`).join('')}</div><button class="btn rs-next">Próximo ›</button><button class="btn rs-end" data-close>${fresh?`Começar ${s.season+1} ▸`:'Fechar'}</button></div></div>`);
+    <div class="rs-nav"><button class="btn ghost rs-prev" aria-label="Voltar">‹</button><div class="rs-dots">${steps.map((_,i)=>`<i data-rs="${i}"></i>`).join('')}</div><button class="btn rs-next">Próximo ›</button><button class="btn rs-end" data-recapend>${fresh?`Começar ${s.season+1} ▸`:'Fechar'}</button></div></div>`);
   const M=$('#modal');M.classList.add('recap-modal');const tr=M.querySelector('.rs-track'),n=steps.length;let cur=0;
   const go=i=>{cur=Math.max(0,Math.min(n-1,i));tr.style.transform=`translateX(${-cur*100}%)`;M.querySelectorAll('.rs-step').forEach((e,k)=>e.classList.toggle('on',k===cur));M.querySelectorAll('[data-rs]').forEach((e,k)=>e.classList.toggle('on',k===cur));
     M.querySelector('.rs-prev').style.visibility=cur?'visible':'hidden';const nx=M.querySelector('.rs-next');nx.hidden=cur===n-1;M.querySelector('.rs-end').hidden=cur!==n-1;M.querySelector('.rs').scrollTop=0};
