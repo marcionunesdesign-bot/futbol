@@ -130,6 +130,8 @@ export function makePlayer(o){
   root.updateMatrixWorld(true);
   // cabelo volumoso (black power) para alguns
   const B={};model.traverse(b=>{if(b.isBone)B[b.name]=b});
+  /* ossos sujeitos ao limitador (todos menos dedos) e estado do relógio visual */
+  const LB=Object.values(B).filter(b=>!/_0[123]_|thumb|index|middle|ring|pinky/.test(b.name));const PQ=new Map();let spKey=null,spR=0;
   // mão relaxada: dedos levemente dobrados (o modelo vem de mão espalmada)
   const FG=[];{const fax=[0,0,1];for(const sd of ['l','r'])for(const f of ['index','middle','ring','pinky'])for(const k of [1,2,3]){const b=B[f+'_0'+k+'_'+sd];if(!b)continue;const ang=(k===1?.55:k===2?.75:.5)*(f==='index'?.8:f==='pinky'?1.1:1);FG.push([b,new T.Quaternion().setFromAxisAngle(new T.Vector3(...fax),ang*(sd==='l'?1:-1)*((window.__fsg)||1))])}
   }
@@ -185,7 +187,11 @@ export function makePlayer(o){
     const dt=fast?Math.min(dtS,rdt*1.6):Math.min(.1,dtS);const fdt=fast?rdt:dt;
     for(const k in act){act[k].enabled=false;act[k].setEffectiveWeight(0)}
     body.rotation.set(0,0,0);body.position.set(0,0,0);RX=RY=RZ=0;TG.clear();
-    const mv=p.mv??0,sp=mv*7.2;const special=p.anim&&p.anim.k;const an=p.anim?p.anim.a:0;let locoW=1;
+    const mv=p.mv??0,sp=mv*7.2;let special=p.anim&&p.anim.k;let an=p.anim?p.anim.a:0;let locoW=1;
+    /* relógio visual: o movimento especial anda no tempo real (no máximo 1,6x), mesmo com o jogo em 2x/4x */
+    {const key=special?special+'|'+(p.anim.t??''):null;if(key!==spKey){spKey=key;spR=0}if(special){spR+=fdt*1.6*(fast?1:Math.max(1,spd));an=Math.min(an,fast?spR:an)}}
+    /* acelerado: sem os movimentos curtos (tropeço, ombrada, lamento) que viravam troca de pose a cada quadro */
+    if(fast&&spd>1.6&&(special==='beaten'||special==='stumble'||special==='shoulder'||special==='lament'))special=null;
     const leftK=!!p.left,FT=leftK?'l':'r',K=leftK?'_l':'_r',O=leftK?'_r':'_l';
     if(!HAS){legacy(p,t,dt,sp);return}
     // ---------- ações especiais (substituem a locomoção) ----------
@@ -225,8 +231,9 @@ export function makePlayer(o){
     if(p.skill&&p.skill.k==='bike'&&A.scissor){// bicicleta: sobe, chuta no alto, cai e levanta (sem cortar no meio)
       const n=side(A.scissor,FT);const m=MX[n];const a=p.skill.a;kw=1;P(n,1,Math.min(m.dur-.02,a<.3?m.hit*(.5+a/.6):m.hit+(a-.3)*1.05));locoW=0}
     else if(p.kick){}
-    else if(p.skill&&p.skill.k==='spin'&&A.spin){const m=MX[A.spin];kw=Math.min(1,p.skill.a/.12,(1.2-p.skill.a)/.2);kw=Math.max(0,Math.min(1,kw));P(A.spin,kw,Math.min(m.dur-.02,p.skill.a*m.dur/1.2))}
+    else if(p.skill&&p.skill.k==='spin'&&A.spin&&!(fast&&spd>1.6)){const m=MX[A.spin];kw=Math.min(1,p.skill.a/.12,(1.2-p.skill.a)/.2);kw=Math.max(0,Math.min(1,kw));P(A.spin,kw,Math.min(m.dur-.02,p.skill.a*m.dur/1.2))}
     else if(special==='shoulder'&&A.pass&&an<.6){const n=side(A.pass,FT);const k=Math.min(1,an/.6);kw=Math.min(1,k/.15,(1-k)/.3);kw=Math.max(0,kw);kw=kw*kw*(3-2*kw);P(n,kw,kickT(n,k))}// desarme em pé: estica a perna na bola
+    else if(fast&&spd>1.6&&p.trap){}
     else if(p.trap==='thigh'&&A.thigh){kw=.7;P(A.thigh,kw,MX[A.thigh].hit*.9)}
     else if(p.trap&&A.trap){kw=.6;P(A.trap,kw,MX[A.trap].hit*.8)}
     else if(p.jump&&!o.gk&&A.head){kw=1;P(A.head,1,MX[A.head].hit*.85);RY+=.28;locoW=0}
@@ -265,7 +272,16 @@ export function makePlayer(o){
     if(p.card){rot('upperarm_r',[[Z,-1.9]])}
     if(p.flagUp){rot('upperarm_r',[[Z,-1.8]])}
     if(special==='shoulder'){const e=Math.sin(Math.min(1,an/.5)*Math.PI);body.rotation.z+=.2*e;rot('spine_02',[[Y,.35*e]])}
+    /* pedalada: as pernas passam por cima da bola, uma de cada vez, com o corpo balançando para vender a finta */
+    if(p.skill&&p.skill.k==='step'&&!(fast&&spd>1.6)){const a=p.skill.a,dur=.6;if(a<dur){const ph=a/dur*2;const lg=Math.floor(ph)%2?'l':'r';const e=Math.sin((ph%1)*Math.PI);const sg=lg==='r'?1:-1;const env=Math.min(1,a/.08,(dur-a)/.1);
+      rot('thigh_'+lg,[[X,-.62*e*env],[Z,sg*.5*e*env]]);rot('calf_'+lg,[[X,.55*e*env]]);rot('spine_01',[[Z,-sg*.16*e*env]]);body.rotation.z+=-sg*.1*e*env}}
     if(p.look!=null&&!special&&!p.dive&&!kw&&!calm&&!p.back&&!p.side){const lk=Math.max(-.7,Math.min(.7,p.look));rot('neck_01',[[Y,lk*.18]]);rot('Head',[[Y,lk*.22]])}
+    /* limitador de articulações: nenhum osso gira mais rápido que um corpo de verdade (em tempo real).
+       É a trava final contra contorção: vale para qualquer velocidade do jogo e qualquer mistura de movimentos */
+    {const lim=(kw>.05||p.kick||p.gkA||p.dive)?34:(fast?16:20);const mx=lim*Math.max(1/120,Math.min(.05,rdt||1/60));
+      for(const b of LB){const q=b.quaternion;let pq=PQ.get(b);if(!pq){PQ.set(b,q.clone());continue}
+        const d=Math.min(1,Math.abs(pq.x*q.x+pq.y*q.y+pq.z*q.z+pq.w*q.w));const ang=2*Math.acos(d);
+        if(ang>mx){pq.slerp(q,mx/ang);q.copy(pq)}else pq.copy(q)}}
   }
   function legacy(p,t,dt,sp){let spAnim=sp;
     const special=p.anim&&p.anim.k;let locoW=1;

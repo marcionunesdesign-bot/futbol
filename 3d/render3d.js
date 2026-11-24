@@ -1,6 +1,6 @@
 // FUTBOL — motor visual 3D da partida (Three.js)
 import * as T from './three.module.min.js';
-import {loadAssets,makePlayer} from './players3d.js?v=32';
+import {loadAssets,makePlayer} from './players3d.js?v=33';
 export {loadAssets};
 
 const L=105,W=68,GW=7.32,GH=2.44;
@@ -304,8 +304,8 @@ export class Engine{
       if(kick){if(P.kickH==null){P.kickH=by;if(p.kk==='shot'&&by>1.45&&!inf.gk)P.bikeT=t}pose.ballH=P.kickH}else P.kickH=null;
       if(P.bikeT&&t-P.bikeT<2.6)pose.skill={k:'bike',a:t-P.bikeT};else P.bikeT=null;
       // drible de efeito: giro 360 quando muda de direção bruscamente com a bola no pé
-      if(own&&!kick&&Math.abs(P.trn||0)>5.2&&sp>2.2&&(!P.spinT||t-P.spinT>14)&&(P.spinOK??(P.spinOK=Math.random()<.35)))P.spinT=t;// giro 360: raro e só para alguns jogadores
-      if(P.spinT&&t-P.spinT<1.2&&own)pose.skill={k:'spin',a:t-P.spinT};
+      /* dribles de efeito vindos do motor: roleta (giro 360), pedalada (pernas por cima da bola); o chapéu é o toque + a bola no alto */
+      if(p.trick&&!kick){if(p.trick.k==='roleta')pose.skill={k:'spin',a:p.trick.a*1.1};else if(p.trick.k==='pedalada'&&p.trick.a<.75)pose.skill={k:'step',a:p.trick.a}}
       // goleiro: lê o chute e mergulha no canto onde a bola vai
       let ox=0,oz=0;
       if(inf.gk&&fly&&fly.kind==='shot'&&fly.side!==inf.side&&fly.t!=null&&fly.dur&&Math.abs(wx(fly.tx)-x)<9){

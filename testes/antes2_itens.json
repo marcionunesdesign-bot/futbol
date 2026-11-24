@@ -1,0 +1,17 @@
+{
+ "tabelas_jogo": "10.4",
+ "ultrapassagem_lateral": "2%",
+ "contra_ataque_2_disparam": "59%",
+ "tiro_meta_curto": "55% de 65",
+ "escanteio_homem_nas_2_traves": "77%",
+ "lateral_2_perto": "100%",
+ "pontas_dist_centro_m": "23.5",
+ "ata_atras_do_ultimo_zagueiro_m": "19.7",
+ "distancia_defesa_meio_m": "14.1",
+ "linha_retranca_m": "17.9",
+ "linha_normal_m": "24.2",
+ "dist_marcador_pressao_alta_m": "19.1",
+ "dist_marcador_pressao_baixa_m": "19.0",
+ "em_disparada_inicio": "42%",
+ "em_disparada_fim": "40%"
+}

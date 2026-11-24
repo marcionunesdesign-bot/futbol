@@ -1,3 +1,4 @@
+/*SEEDRND*/{let s=12345;Math.random=()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x80000000}}
 // Teste item a item da movimentação
 const SRC=process.argv[2]||'/home/claude/futbol-repo/src';const N=+(process.argv[3]||16);
 global.C11_DATA=require(SRC+'/data.js');global.localStorage={s:{},getItem(k){return this.s[k]||null},setItem(k,v){this.s[k]=v},removeItem(){}};
