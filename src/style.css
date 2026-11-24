@@ -1182,3 +1182,6 @@ html.pwa-ios .app{height:var(--apph,100%)!important;transform:translateZ(0)}  /*
 html.pwa-ios .edge-strip{display:block;position:fixed;top:0;left:0;right:0;height:max(env(safe-area-inset-top),11px);background:#0b0c0e;z-index:2147483000;pointer-events:none}
 html.pwa-ios body.light .edge-strip{background:#ffffff}
 html.pwa-ios .top{padding-top:calc(env(safe-area-inset-top) + 8px)!important}
+
+#s-cloud.cloud-hi{animation:cloudHi 2.4s ease}
+@keyframes cloudHi{0%,60%{box-shadow:0 0 0 3px var(--acc),0 0 30px color-mix(in srgb,var(--acc) 60%,transparent)}100%{box-shadow:none}}

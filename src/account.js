@@ -28,7 +28,7 @@ function authForm(onDone){
   U.$('#ac-eye').onclick=()=>{const i=U.$('#ac-pass');i.type=i.type==='password'?'text':'password'};
   const go=async()=>{const btn=U.$('#ac-go'),er=U.$('#ac-err');er.hidden=true;btn.disabled=true;const old=btn.textContent;btn.textContent='Aguarde…';
     try{const body={email:U.$('#ac-email').value.trim(),password:U.$('#ac-pass').value};if(mode==='register')body.name=U.$('#ac-name').value.trim();const j=await api(mode,body);st.user=j.user;await list();U.closeModal();U.toast(`Olá, ${U.esc(st.user.name)}! ⚽`);onDone&&onDone()}
-    catch(e){er.textContent=e.message;er.hidden=false;btn.disabled=false;btn.textContent=old;U.$('.auth-form').classList.remove('shake');void U.$('.auth-form').offsetWidth;U.$('.auth-form').classList.add('shake')}};
+    catch(e){console.error(e);if(!document.contains(er)){U.toast('⚠️ '+U.esc(e.message));return}er.textContent=e.message;er.hidden=false;btn.disabled=false;btn.textContent=old;const af=U.$('.auth-form');if(af){af.classList.remove('shake');void af.offsetWidth;af.classList.add('shake')}}};
   U.$('#ac-go').onclick=go;['#ac-pass','#ac-email','#ac-name'].forEach(s=>U.$(s).onkeydown=e=>{if(e.key==='Enter')go()});setTimeout(()=>U.$('#ac-email').focus(),80);
 }
 async function logout(){try{await api('logout',{})}catch(e){}st.user=null;st.careers=[]}
