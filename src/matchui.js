@@ -105,7 +105,7 @@ function start(mode){
   st.m.onEvent=onEvent;snapClear();tipMin=-99;
   if(mode==='quick'){st.m.runToEnd();finish();return}
   st.live=true;st.paused=true;layout();A.fadeMusic(0,1.2);A.gate(true);A.crowd(true);st.last=performance.now();cancelAnimationFrame(st.raf);st.raf=requestAnimationFrame(loop);
-  intro(()=>{st.paused=false;st.last=performance.now();const b=$('#mv-play');if(b)b.innerHTML='❚❚ Pausar';A.whistle(1)});
+  intro(()=>{st.paused=false;st.last=performance.now();const b=$('#mv-play');if(b)b.innerHTML='❚❚ Pausar';(A.kickoffWhistle?A.kickoffWhistle():A.whistle(1))});
 }
 /* ---------- multiplayer: partida contra o time de outro técnico ---------- */
 function startOnline(cfg){A.init();st.online=cfg;st.um={home:cfg.home.club.id,away:cfg.away.club.id,label:cfg.label||'Amistoso online',type:'F',online:true,knock:false};st.us=cfg.us;
@@ -116,7 +116,7 @@ function startOnline(cfg){A.init();st.online=cfg;st.um={home:cfg.home.club.id,aw
   U.go('match');st.live=true;st.paused=true;layout();
   if(st.net){const pb=$('#pbox');if(pb&&!$('#netwait')){const w=document.createElement('div');w.id='netwait';w.className='netwait';w.hidden=true;w.innerHTML='<span></span>Aguardando o outro técnico…';pb.appendChild(w)}}
   A.fadeMusic(0,1.2);A.gate(true);A.crowd(true);st.last=performance.now();cancelAnimationFrame(st.raf);st.raf=requestAnimationFrame(loop);
-  intro(()=>{st.paused=false;st.last=performance.now();const b=$('#mv-play');if(b)b.innerHTML=st.net?'🔴 Ao vivo':'❚❚ Pausar';A.whistle(1)});
+  intro(()=>{st.paused=false;st.last=performance.now();const b=$('#mv-play');if(b)b.innerHTML=st.net?'🔴 Ao vivo':'❚❚ Pausar';(A.kickoffWhistle?A.kickoffWhistle():A.whistle(1))});
 }
 /* ---------- câmera de bola parada: pênalti e falta vistos de trás do batedor ---------- */
 function spCam(fly,done){const rnd=(a,b)=>a+Math.random()*(b-a);const pb=$('#pbox'),cv0=$('#mcv');if(!pb||!cv0){done();return}const R=cv0.getBoundingClientRect(),PB=pb.getBoundingClientRect();
@@ -196,7 +196,12 @@ function intro(done){const m=st.m;const [H,Aw]=m.T;const pb=$('#pbox');if(!pb){d
   const is3=typeof C11Render3D!=='undefined'&&st.rd instanceof C11Render3D.Hybrid;if(is3){el.classList.add('in3d');st.rd.introT=performance.now()}
   if(/final/i.test(st.um.label||'')&&!/semi|quartas|oitavas/i.test(st.um.label||'')){try{A.init();A.fanfare()}catch(e){}}// (24) final: vinheta de entrada
   pb.appendChild(el);const stopCrowd=is3?()=>{}:crowdShow(el.querySelector('.in-cv'),H.club.kit,Aw.club.kit);
-  let fin=false;const end=()=>{if(fin)return;fin=true;el.classList.add('out');setTimeout(()=>{stopCrowd();el.remove()},450);done()};
+  let fin=false;const end=()=>{if(fin)return;fin=true;
+    if(!is3){el.classList.add('out');setTimeout(()=>{stopCrowd();el.remove()},450);done();return}
+    /* transição de cena: escurece, os times já aparecem posicionados para a saída de bola, e clareia com o apito */
+    const bk=document.createElement('div');bk.className='in-cut';pb.appendChild(bk);requestAnimationFrame(()=>requestAnimationFrame(()=>bk.classList.add('on')));
+    setTimeout(()=>{stopCrowd();el.remove();if(st.rd)st.rd.introT=0;if(st.m)st.m.cutId=(st.m.cutId||0)+1;
+      setTimeout(()=>{bk.classList.remove('on');done();setTimeout(()=>bk.remove(),600)},320)},400)};
   el.onclick=end;setTimeout(end,is3?5600:4200)}
 function ballSfx(k){if(st.skipping||!visible())return;if(k==='touch'&&st.speed>2)return;if(k==='touch')A.touch();else if(k==='pass')A.pass();else if(k==='shot')A.shot();else if(k==='trap')A.trap();else A.kick()}
 function visible(){return U.view==='match'&&!st.replay&&!(st.mode==='hl'&&st.tail<=0)}
