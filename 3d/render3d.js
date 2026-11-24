@@ -1,6 +1,6 @@
 // FUTBOL — motor visual 3D da partida (Three.js)
 import * as T from './three.module.min.js';
-import {loadAssets,makePlayer} from './players3d.js?v=34';
+import {loadAssets,makePlayer} from './players3d.js?v=35';
 export {loadAssets};
 
 const L=105,W=68,GW=7.32,GH=2.44;
