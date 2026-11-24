@@ -154,7 +154,7 @@ function rPlay(i,announce=true){if(!ctx||!RALL[i])return;const old=rm;const el=n
   let errs=0;el.onerror=()=>{if(rm!==x)return;errs++;if(errs<3){setTimeout(()=>{if(rm===x){el.load();el.play().catch(()=>{})}},1500)}else{rm=null;rPlay(rPick(scene),false)}};el.addEventListener('stalled',()=>{if(rm===x&&rOn)setTimeout(()=>{if(rm===x&&el.paused&&rOn)el.play().catch(()=>{})},2000)});
   const p=el.play();if(p&&p.catch)p.catch(()=>{});g.gain.linearRampToValueAtTime(.62,ctx.currentTime+2.2);rStop(old);if(announce&&onTrack)onTrack(RALL[i][1])}
 function synthFallback(){if(rOn){rOn=false;playing=false;music(true)}}
-function sceneSet(sc){if(sc===scene)return;scene=sc;if(realOK&&rOn&&!(S.rtrack>=0))rPlay(rPick(sc))}
+function sceneSet(sc){if(sc===scene)return;scene=sc;/* não corta a música ao trocar de tela: a lista da tela nova vale a partir da próxima faixa */if(realOK&&rOn&&!rm&&!(S.rtrack>=0))rPlay(rPick(sc))}
 
 /* ---------- portão de metal (abertura de tela, leilão, partida) ---------- */
 function gate(big){if(!ctx)return;const t=ctx.currentTime+.02;const d=big?1.6:.9;
