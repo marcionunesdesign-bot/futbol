@@ -1261,3 +1261,37 @@ body.light #modal.recap-modal>.frame{background:linear-gradient(180deg,#14171b,#
   .pp-body>.row:first-child svg{max-width:96px;height:auto}
 }
 @media (hover:none){.nav button:hover{color:var(--ink2)}.nav button.on:hover{color:var(--accink)}}
+/* ===== tática durante a partida no celular ===== */
+#modal .frame:has(#mtac)>.x{display:none}
+@media (max-width:760px) and (min-height:521px){
+  #modal.wide>.frame:has(#mtac){padding:10px 10px max(12px,env(safe-area-inset-bottom))!important;height:var(--vh)!important;max-height:var(--vh)!important;border-radius:0!important}
+  #modal .tac.inmatch{display:flex!important;flex-direction:column;height:auto!important;gap:10px;overflow:visible!important}
+  #modal .tac.inmatch>*{overflow:visible!important}
+  #modal .tac.inmatch>.frame:last-child{display:none!important}
+  #modal .tac.inmatch>.board-wrap{order:-1;display:flex!important;flex-direction:column;gap:8px;padding:10px!important;height:auto!important}
+  #modal .tac.inmatch>.board-wrap>.row:first-child{display:grid!important;grid-template-columns:1fr 1fr;gap:6px!important}
+  #modal .tac.inmatch>.board-wrap>.row:first-child .seg{width:auto!important;grid-column:1/-1}
+  #modal .tac.inmatch>.board-wrap>.row:first-child .sp{display:none}
+  #modal .tac.inmatch>.board-wrap>.row:first-child .btn{width:100%;min-height:42px;justify-content:center}
+  #modal .tac.inmatch>.board-wrap>.row:first-child .seg button{min-height:40px;font-size:14px}
+  #modal .tac.inmatch .board{height:auto!important;max-height:none!important;aspect-ratio:auto!important;flex:none;width:100%}
+  #modal .tac.inmatch .board svg{width:100%!important;height:auto!important;max-height:calc(var(--vh) * 64 / 100)}
+  #modal .tac.inmatch>.board-wrap>.row:last-child{font-size:11.5px!important;gap:6px!important}
+  #modal .tac.inmatch>.frame:first-child{padding:12px!important}
+}
+@media (max-height:520px) and (orientation:landscape){
+  #modal.wide>.frame:has(#mtac){padding:8px max(10px,env(safe-area-inset-right)) 8px max(10px,env(safe-area-inset-left))!important;height:var(--vh)!important;max-height:var(--vh)!important;width:100%!important;max-width:none!important;border-radius:0!important}
+  #modal .tac.inmatch{display:grid!important;grid-template-columns:auto minmax(0,1fr)!important;gap:10px;height:calc(var(--vh) - 16px)!important;overflow:hidden!important;align-items:stretch}
+  #modal .tac.inmatch>.frame:last-child{display:none!important}
+  #modal .tac.inmatch>.frame:first-child{order:2;overflow:auto!important;padding:12px!important}
+  #modal .tac.inmatch>.board-wrap{order:1;grid-row:auto!important;display:grid!important;grid-template-columns:132px auto!important;gap:8px;padding:8px!important;height:100%!important;overflow:hidden!important;align-items:start}
+  #modal .tac.inmatch>.board-wrap>.row:first-child{display:flex!important;flex-direction:column;align-items:stretch!important;gap:6px!important}
+  #modal .tac.inmatch>.board-wrap>.row:first-child .seg{width:auto!important;display:grid;grid-template-columns:1fr}
+  #modal .tac.inmatch>.board-wrap>.row:first-child .seg button,#modal .tac.inmatch>.board-wrap>.row:first-child .btn{min-height:36px;font-size:13px;padding:0 6px}
+  #modal .tac.inmatch>.board-wrap>.row:first-child .sp{display:none}
+  #modal .tac.inmatch>.board-wrap>.row:last-child{display:none!important}
+  #modal .tac.inmatch .board{height:calc(var(--vh) - 34px)!important;width:calc((var(--vh) - 34px) * 740 / 1160)!important;aspect-ratio:auto!important;max-height:none!important;flex:none}
+  #modal .tac.inmatch .board svg{height:100%!important;width:100%!important}
+}
+@media (max-height:520px) and (orientation:landscape){#modal .tac.inmatch [data-closetac]{font-size:12px!important;letter-spacing:.02em!important;white-space:nowrap;padding:0 4px!important}}
+@media (max-width:760px) and (min-height:521px){#modal .tac.inmatch>*{width:100%!important;max-width:none!important;box-sizing:border-box}}
