@@ -1,0 +1,26 @@
+import asyncio
+from playwright.async_api import async_playwright
+async def main():
+  async with async_playwright() as p:
+    b=await p.chromium.launch()
+    ctx=await b.new_context(viewport={'width':844,'height':390},is_mobile=True,has_touch=True,device_scale_factor=2)
+    await ctx.add_init_script("try{localStorage.setItem('c11-ui',JSON.stringify({gfx:'2d'}))}catch(e){}")
+    pg=await ctx.new_page();errs=[];pg.on('pageerror',lambda e:errs.append(str(e)))
+    await pg.goto('http://localhost:8769/index.html');await pg.wait_for_timeout(800)
+    await pg.evaluate("document.querySelector('[data-div=A]').click()");await pg.evaluate("document.querySelector('#s-go').click()");await pg.wait_for_timeout(1000)
+    await pg.evaluate("U.closeModal&&U.closeModal();U.go('match')");await pg.wait_for_timeout(500)
+    await pg.evaluate("document.querySelector('#mv-full').click()");await pg.wait_for_timeout(1500)
+    await pg.evaluate("const i=document.querySelector('.intro');i&&i.click()");await pg.wait_for_timeout(1200)
+    await pg.tap('[data-hud=spd]');await pg.wait_for_timeout(300)
+    await pg.locator('#mpop button',has_text='4x').tap();await pg.wait_for_timeout(300)
+    print('menu:',await pg.evaluate("[...document.querySelectorAll('#mpop button')].map(b=>b.textContent+(b.classList.contains('on')?'*':'')).join(' | ')"),'aberto:',await pg.evaluate("!document.querySelector('#mpop').hidden"))
+    print('barra:',await pg.evaluate("[...document.querySelectorAll('.mbar [data-sp]')].map(b=>b.textContent+(b.classList.contains('on')?'*':'')).join(' ')"))
+    await pg.locator('#mpop button',has_text='Pausar').tap();await pg.wait_for_timeout(300)
+    print('após pausar:',await pg.evaluate("document.querySelector('#mv-play').textContent"),'| menu:',await pg.evaluate("document.querySelector('#mpop button').textContent"))
+    await pg.tap('[data-hud=cam]');await pg.wait_for_timeout(200);await pg.locator('#mpop button',has_text='Tática').tap();await pg.wait_for_timeout(200)
+    print('câmera:',await pg.evaluate("[...document.querySelectorAll('#mpop .seg button')].map(b=>b.textContent+(b.classList.contains('on')?'*':'')).join(' ')"))
+    await pg.tap('[data-hud=tac]');await pg.wait_for_timeout(500);print('prancheta abriu:',await pg.evaluate("!!document.querySelector('#mtac')"))
+    await pg.tap('[data-closetac]');await pg.wait_for_timeout(300)
+    await pg.tap('[data-hud=cfg]');await pg.wait_for_timeout(200);await pg.screenshot(path='/tmp/hud_cfg.png')
+    print(errs);await b.close()
+asyncio.run(main())
