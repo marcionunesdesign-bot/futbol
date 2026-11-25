@@ -1478,3 +1478,7 @@ body.light .matchv>.side{background:#f3f5f7f7}
 #start .ns input#s-name:focus{border-color:#e1061c;outline:none;box-shadow:0 0 0 3px #e1061c33}
 .ns-foot{color:var(--mute)}.ns-foot a{color:#c7ccd2}
 @media (max-width:560px){.ns{padding-left:16px;padding-right:16px}.ns-lg{height:26px}.ns-clubs button{font-size:13px}}
+/* toques certeiros: o aviso flutuante nunca bloqueia os botões de baixo; sem atraso/zoom de duplo toque */
+.toast{pointer-events:none!important}.toast.on a,.toast.on button{pointer-events:auto}
+a,button,label,select,summary,[role=button],[data-go],[data-player]{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+@media (hover:none){.ns-btn:hover,.ns-btn.pri:hover,.ns-div:hover,.ns-clubs button:hover{transform:none}}
