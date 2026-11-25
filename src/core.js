@@ -221,7 +221,17 @@ function progressOf(g){if(!g)return -1;return (g.season||0)*100000+(g.date||0)*1
 function newerSave(a,b){if(!a)return b;if(!b)return a;const pa=progressOf(a),pb=progressOf(b);if(pa!==pb)return pa>pb?a:b;const sa=a.savedAt||0,sb=b.savedAt||0;if(sa!==sb)return sa>sb?a:b;return (a.rev||0)>=(b.rev||0)?a:b}
 function current(){try{const s=localStorage.getItem(KEY);return s?JSON.parse(s):null}catch(e){return null}}
 function save(){if(G){G.rev=(G.rev||0)+1;G.savedAt=Date.now()}try{localStorage.setItem(KEY,JSON.stringify(G))}catch(e){console.warn('save',e)}if(onSave)try{onSave()}catch(e){}}
+/* conserta elencos: cada jogador fica só no clube a que pertence */
+function fixRosters(){if(!G||!G.clubs)return 0;const own={};let n=0;
+  for(const id in G.clubs){const c=G.clubs[id];c.players=(c.players||[]).filter(pid=>{if(!G.players[pid]){n++;return false}(own[pid]=own[pid]||[]).push(id);return true})}
+  for(const pid in own){const p=G.players[pid],L=own[pid];if(L.length===1&&(!p.c||!G.clubs[p.c]||p.c===L[0])){if(!p.c)p.c=L[0];continue}
+    const keep=L.includes(p.c)?p.c:L[0];if(p.c!==keep){p.c=keep}
+    for(const id of L)if(id!==keep){G.clubs[id].players=G.clubs[id].players.filter(x=>x!==pid);n++}}
+  for(const id in G.clubs){const c=G.clubs[id];const bad=c.players.filter(pid=>G.players[pid].c!==id);if(bad.length){c.players=c.players.filter(pid=>G.players[pid].c===id);n+=bad.length}}
+  if(n&&G.tactic){const u=G.clubs[G.user];const ok=new Set(u.players);G.tactic.lineup=G.tactic.lineup.map(x=>ok.has(x)?x:null);G.tactic.subs=(G.tactic.subs||[]).filter(x=>ok.has(x))}
+  return n}
 function afterLoad(){if(!G)return;{const js=JSON.stringify(G);if(js.includes('Red Bull Bragantino'))G=JSON.parse(js.split('Red Bull Bragantino').join('Bragantino'))}if(!G.cid)G.cid='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);if(G._tacBak){G.tactic=G._tacBak;delete G._tacBak}for(const k of Object.keys(G.clubs||{}))if(k.startsWith('mp:'))delete G.clubs[k];for(const id of Object.keys(G.players||{}))if(+id>=8e6)delete G.players[id];for(const p of Object.values(G.players||{}))migratePlayer(p);if(G.trainPending===undefined)G.trainPending=true;
+  try{const u0=(G.clubs[G.user]||{players:[]}).players.length;const k=fixRosters();const u1=(G.clubs[G.user]||{players:[]}).players.length;if(u1<u0)msg('Elenco corrigido',`${u0-u1} jogador${u0-u1>1?'es':''} que já pertencia${u0-u1>1?'m':''} a outro clube saiu${u0-u1>1?'ram':''} do seu plantel (estava${u0-u1>1?'m':''} duplicado${u0-u1>1?'s':''} por um erro do leilão, já corrigido).`)}catch(e){console.error(e)}
   try{const n=syncRosters();if(n)msg('Elencos oficiais',`Atualizamos ${n} nomes de jogadores para os elencos reais de 2026 de todos os clubes.`)}catch(e){console.error(e)}if(!G.bonus)G.bonus={win:0,draw:0,goal:0};if(!G.settings)G.settings={};
   if(!G.cal&&G.date===0&&G.user&&G.clubs[G.user]){try{startSeason(false);msg('Campeonato atualizado','As Séries A, B, C e D agora têm os 20 clubes reais de 2026, com elencos oficiais. A temporada recomeçou com 19 rodadas de liga e 4 datas de Taça Nacional.')}catch(e){console.error(e)}}}
 /* ---------- conversa no vestiário depois do jogo ---------- */
@@ -679,7 +689,8 @@ function listForSale(pid,reserve){const p=G.players[pid];if(p.c!==G.user)throw n
   save()}
 function closeLot(i,userAmt){
   const lot=G.auction.lots[i];if(lot.done)return lot;
-  const p=G.players[lot.pid];lot.bids=aiBids(lot);
+  const p=G.players[lot.pid];
+  if(!p||lot.seller&&p.c!==lot.seller){lot.done=true;lot.cancel=true;G.auction.cursor=Math.max(G.auction.cursor,i+1);if(lot.mine&&p)msg('Leilão cancelado',`${p.n} já tinha sido negociado antes do leilão.`);save();return lot}/* já trocou de clube */lot.bids=aiBids(lot);
   if(userAmt&&!lot.mine){const c=userClub();if(userAmt>c.money)throw new Error('Seu lance passa do caixa disponível.');if(userAmt<lot.min)throw new Error(`O lance mínimo é ${money(lot.min)}.`);lot.userBid=userAmt;lot.bids.push({club:G.user,amt:userAmt,you:true})}
   lot.bids.sort((a,b)=>b.amt-a.amt||(a.you?-1:1));
   lot.done=true;const top=lot.bids[0];
@@ -690,6 +701,11 @@ function closeLot(i,userAmt){
   G.auction.cursor=Math.max(G.auction.cursor,i+1);save();return lot;
 }
 function transfer(p,from,to,price){
+  /* o jogador sai de qualquer elenco em que ainda esteja (evita aparecer em dois clubes) e qualquer leilão aberto dele é cancelado */
+  if(p.c&&G.clubs[p.c]&&p.c!==from)from=p.c;
+  for(const id in G.clubs){const c=G.clubs[id];if(id!==from&&id!==to&&c.players.includes(p.id)){c.players=c.players.filter(x=>x!==p.id);if(id===G.user){G.tactic.lineup=G.tactic.lineup.map(x=>x===p.id?null:x);G.tactic.subs=G.tactic.subs.filter(x=>x!==p.id)}}}
+  if(G.auction)for(const l of G.auction.lots)if(l.pid===p.id&&!l.done){l.done=true;l.cancel=true}
+  if(G.toSell)G.toSell=G.toSell.filter(x=>x!==p.id);
   if(from&&G.clubs[from]){const f=G.clubs[from];f.players=f.players.filter(x=>x!==p.id);if(f.youth)f.youth=f.youth.filter(x=>x!==p.id);f.money+=price;if(from===G.user){G.seasonMoney.in+=price;G.tactic.lineup=G.tactic.lineup.map(x=>x===p.id?null:x);G.tactic.subs=G.tactic.subs.filter(x=>x!==p.id)}}
   plog(p,'transf',`${from&&G.clubs[from]?G.clubs[from].short:'Sem clube'} → ${G.clubs[to].short}${price?' por '+money(price):''}`);
   if(from&&G.clubs[from])(G.xfer=G.xfer||[]).push({pid:p.id,name:p.n,pos:p.p,ovr:ovr(p),from,to,price});
@@ -884,7 +900,7 @@ function plog(p,t,txt){if(!p)return;p.log=p.log||[];p.log.unshift({s:G.season,d:
 function msg(title,body,extra={}){G.inbox.unshift({id:G.uid++,date:G.date,season:G.season,title,body,read:false,...extra});G.inbox=G.inbox.slice(0,80)}
 
 return {autoTrainNow,setAutoTrain,newerSave,progressOf,current,get G(){return G},set G(v){G=v},set onSave(f){onSave=f},loadObj(o){G=o;afterLoad();try{localStorage.setItem(KEY,JSON.stringify(G))}catch(e){}},D,R,rnd,rint,pick,clamp,gauss,shuffle,DIVS,ATTR,ATTR_LABEL,ATTR_GROUPS,W,POS,STYLES,migratePlayer,setIndividual,setRest,setBonus,bonusBoost,POS_NAME,GROUP,ovr,ovrFor,posFactor,ratingIn,FN,fnGroup,fnOf,
-  FORMATIONS,buildSlots,valueOf,wageOf,formAvg,genPlayer,newGame,takeOver,save,load,hasSave,wipe,exportSave,importSave,userClub,bestLineup,autoLineup,validateLineup,setFormation,
+  FORMATIONS,buildSlots,valueOf,wageOf,formAvg,genPlayer,newGame,fixRosters,takeOver,save,load,hasSave,wipe,exportSave,importSave,userClub,bestLineup,autoLineup,validateLineup,setFormation,
   teamStrength,coachOf,aiTeam,userTeam,runTraining,trainAdvice,syncRosters,teamTalk,dateInfo,nextUserMatch,ensureCupDraw,finishDate,sortedTable,penalties,money,payroll,TRAIN,YTRAIN,scout,scoutCost,upgradeAcademy,academyCost,promote,demote,release,
   talk,moodText,relText,startSeason,expandLeagues,newAuction,makeOffer,askPrice,searchPlayers,listForSale,closeLot,answerOffer,acceptJob,declineJobs,CAL,CUP_NAMES,CUP_RULE,FAC,facLvl,facCost,buyFac,ACTS,doAct,playerBoostCost,boostPlayer,prizeTable,DIV_PRIZE,trophies,resolveFortune,FORT,divName,DIV_TV,msg,quickResult,valueOfNow:valueOf};
 })();
