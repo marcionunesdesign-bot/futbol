@@ -5,7 +5,7 @@ async def main():
     b=await p.chromium.launch()
     for w,h,nm in[(390,844,'pt'),(844,390,'ls'),(1366,768,'dk')]:
       pg=await (await b.new_context(viewport={'width':w,'height':h},is_mobile=w<1000,has_touch=w<1000,device_scale_factor=2)).new_page();errs=[];pg.on('pageerror',lambda e:errs.append(str(e)))
-      await pg.goto('http://localhost:8769/index.html');await pg.wait_for_timeout(800)
+      await pg.goto('http://localhost:8769/?jogar');await pg.wait_for_timeout(800)
       await pg.evaluate("document.querySelector('[data-div=A]').click()");await pg.evaluate("document.querySelector('#s-go').click()");await pg.wait_for_timeout(1000)
       await pg.evaluate("U.closeModal&&U.closeModal();U.go('match')");await pg.wait_for_timeout(500)
       await pg.evaluate("U.openModal('<div id=\"mtac\"></div>');document.querySelector('#modal').classList.add('wide');C11TV.render(document.querySelector('#mtac'),{inMatch:true})" if False else "(()=>{const T=window.TV||window.C11Tactics;U.openModal('<div id=\"mtac\"></div>');document.querySelector('#modal').classList.add('wide');T.render(document.querySelector('#mtac'),{inMatch:true})})()")

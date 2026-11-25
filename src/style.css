@@ -1422,3 +1422,59 @@ body.light .matchv>.side{background:#f3f5f7f7}
 @media (max-width:560px){.ns-clubs{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.ns-clubs button{min-height:100px;font-size:12px;padding:10px 4px 8px}.ns-clubs button svg{width:46px;height:auto}}
 
 .ns-bar .btn{font-size:clamp(17px,4.8vw,22px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* ===== tela inicial no padrão da página Conheça ===== */
+#start{background:#07090a}
+.ns{--r1:#e1061c;--r2:#ff2a3d;--mute:#9aa1a9;--ln:#ffffff14;padding:calc(76px + env(safe-area-inset-top)) 20px max(28px,env(safe-area-inset-bottom));font-family:Inter,system-ui,sans-serif}
+.ns-bg{background:#07090a}
+.ns-bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55;transform:scale(1.05);filter:saturate(1.1) contrast(1.05)}
+.ns-bg::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,#07090af7 0%,#07090ae0 40%,#07090a99 70%,#07090ad0 100%),linear-gradient(180deg,#07090a99,transparent 30%,transparent 60%,#07090a 100%)}
+.ns-bg::after{content:"";position:absolute;inset:0;z-index:1;height:auto;background:radial-gradient(60% 70% at 85% 35%,#e1061c2e,transparent 70%);-webkit-mask:none;mask:none}
+@media (max-width:760px){.ns-bg::before{background:linear-gradient(180deg,#07090aee,#07090ab8 40%,#07090acc 70%,#07090a)}}
+.ns-nav{position:fixed;inset:0 0 auto;z-index:6;display:flex;align-items:center;justify-content:space-between;gap:12px;height:calc(64px + env(safe-area-inset-top));padding:env(safe-area-inset-top) max(20px,calc((100vw - 1240px)/2)) 0;background:#07090ab3;backdrop-filter:blur(14px);border-bottom:1px solid #ffffff12}
+.ns-lg{height:30px;width:auto;color:#fff;display:block}
+.ns-in{width:min(620px,100%);gap:16px}
+.ns-in.nsp-club{width:min(1060px,100%)}
+.ns-eye{display:inline-flex;align-items:center;gap:8px;font:800 13px/1 "Barlow Condensed",sans-serif;letter-spacing:.22em;text-transform:uppercase;color:var(--r2);margin-top:6px}
+.ns-eye::before{content:"";width:26px;height:2px;background:currentColor}
+.ns-hero,.ns-title{font-family:"Barlow Condensed",sans-serif;font-weight:900;line-height:.92;letter-spacing:-.005em;text-transform:uppercase;color:#f4f5f6;margin:0}
+.ns-hero{font-size:clamp(52px,12vw,96px)}.ns-hero span{display:block}
+.ns-hero em,.ns-title em{font-style:normal;color:transparent;background:linear-gradient(180deg,#ff4a5a,#e1061c);-webkit-background-clip:text;background-clip:text}
+.ns-title{font-size:clamp(42px,9.5vw,72px);margin-top:-4px}
+.ns-sub{margin:-4px 0 4px;color:#c7ccd2;font-size:16px}
+.ns-head{margin-top:0}.ns-back{width:44px;height:44px;border-radius:12px;border:1px solid #ffffff2a;background:#ffffff0d;backdrop-filter:blur(10px);color:#fff;display:grid;place-items:center;text-decoration:none}
+.ns-steps i{width:28px;height:4px;background:#ffffff22}.ns-steps i.on{background:linear-gradient(90deg,#ff2236,#e1061c)}
+/* botões iguais aos da Conheça */
+.ns-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:56px;padding:0 26px;border-radius:14px;font:800 18px/1 "Barlow Condensed",sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:0;color:#fff;text-decoration:none;white-space:nowrap;transition:transform .2s,box-shadow .2s}
+.ns-btn.pri{background:linear-gradient(180deg,#ff2236,#c40417);box-shadow:0 10px 30px #e1061c55,inset 0 1px 0 #ffffff40}
+.ns-btn.pri:hover{transform:translateY(-2px);box-shadow:0 16px 40px #e1061c77,inset 0 1px 0 #ffffff40}
+.ns-btn.gh{background:#ffffff0d;border:1px solid #ffffff2a;backdrop-filter:blur(10px)}
+.ns-btn.sm{height:42px;padding:0 16px;font-size:15px;border-radius:11px}
+.ns-btn.xs{height:38px;padding:0 16px;font-size:15px;border-radius:10px}
+.ns-btn:disabled{opacity:.5;cursor:default;transform:none}
+.ns-wide{width:100%;height:58px}
+/* cartões iguais aos da Conheça */
+.ns-cont,.ns-list,.ns-div,.ns-sum,.ns-clubs button{background:linear-gradient(180deg,#12161ae6,#0c0f11e6);border:1px solid var(--ln);border-radius:18px;backdrop-filter:blur(6px);position:relative;overflow:hidden}
+.ns-cont::after,.ns-div::after,.ns-sum::after{content:"";position:absolute;right:-40px;top:-40px;width:130px;height:130px;border-radius:50%;background:radial-gradient(closest-side,#e1061c26,transparent);pointer-events:none}
+.ns-cont{padding:18px}.ns-cont-top small{color:var(--r2);font-family:"Barlow Condensed",sans-serif;font-size:13px;letter-spacing:.2em}
+.ns-cont-top b{font:900 30px/1 "Barlow Condensed",sans-serif;color:#f4f5f6}.ns-cont-top span{color:var(--mute)}
+.ns-list{padding:8px 16px}.ns-lh{font-family:"Barlow Condensed",sans-serif;font-size:13px;letter-spacing:.18em;color:var(--mute)}
+.ns-row-t b{font:800 19px "Barlow Condensed",sans-serif;color:#f4f5f6}.ns-row-t small{color:var(--mute)}
+.ns-del{border-radius:10px;border-color:#ffffff22;background:#ffffff08}
+.ns-div{padding:18px 20px;border-radius:18px;transition:transform .25s,border-color .25s}
+.ns-div:hover{transform:translateY(-3px);border-color:#e1061c66}
+.ns-div.rec{border-color:#e1061c99;box-shadow:0 0 0 1px #e1061c66 inset,0 14px 34px #e1061c22}
+.ns-div-n{font:900 32px/1 "Barlow Condensed",sans-serif;color:#f4f5f6}
+.ns-div-tag{font:800 12px "Barlow Condensed",sans-serif;letter-spacing:.14em;background:#ffffff10;border:1px solid #ffffff1c;color:#dde1e5}
+.ns-div.rec .ns-div-tag{background:linear-gradient(180deg,#ff2236,#c40417);border-color:transparent;color:#fff}
+.ns-div-d{color:var(--mute);font-size:15px}.ns-div-c{color:#c7ccd2;font:700 14px "Barlow Condensed",sans-serif;letter-spacing:.1em;text-transform:uppercase}
+.ns-clubs button{border-radius:16px;font-family:"Barlow Condensed",sans-serif;font-size:15px;letter-spacing:.04em;color:#dde1e5;transition:transform .2s,border-color .2s}
+.ns-clubs button:hover{transform:translateY(-2px);border-color:#e1061c66}
+.ns-clubs button.on{border-color:#e1061c;box-shadow:0 0 0 2px #e1061c,0 12px 30px #e1061c44;background:linear-gradient(180deg,#1a1d21,#120d0f)}
+.ns-bar{background:linear-gradient(transparent,#07090af5 35%)}
+.ns-bar>.ns-btn{width:min(620px,100%)}
+.ns-sum{padding:22px}.ns-sum b{font:900 36px/1 "Barlow Condensed",sans-serif;color:#f4f5f6}.ns-sum span{color:var(--mute)}
+.ns-lbl{font:800 13px "Barlow Condensed",sans-serif;letter-spacing:.2em;color:var(--mute)}
+#start .ns input#s-name{background:#ffffff0b;border:1px solid #ffffff2a;color:#fff;font-family:Inter,sans-serif}
+#start .ns input#s-name:focus{border-color:#e1061c;outline:none;box-shadow:0 0 0 3px #e1061c33}
+.ns-foot{color:var(--mute)}.ns-foot a{color:#c7ccd2}
+@media (max-width:560px){.ns{padding-left:16px;padding-right:16px}.ns-lg{height:26px}.ns-clubs button{font-size:13px}}

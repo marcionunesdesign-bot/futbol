@@ -3,7 +3,7 @@ from playwright.async_api import async_playwright
 async def main():
   async with async_playwright() as p:
     b=await p.chromium.launch();pg=await (await b.new_context(viewport={'width':390,'height':844},is_mobile=True,has_touch=True)).new_page();errs=[];pg.on('pageerror',lambda e:errs.append(str(e)))
-    await pg.goto('http://localhost:8769/index.html');await pg.wait_for_timeout(800)
+    await pg.goto('http://localhost:8769/?jogar');await pg.wait_for_timeout(800)
     await pg.click('[data-div=A]');await pg.click('#s-go');await pg.wait_for_timeout(1200);await pg.evaluate("U.closeModal&&U.closeModal()")
     v=lambda: pg.evaluate("document.body&&document.body.dataset.view")
     print('voltar visível no início?',await pg.evaluate("!document.querySelector('#b-back').hidden"))

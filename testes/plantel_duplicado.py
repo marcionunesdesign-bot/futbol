@@ -3,7 +3,7 @@ from playwright.async_api import async_playwright
 async def main():
   async with async_playwright() as p:
     b=await p.chromium.launch();pg=await b.new_page();errs=[];pg.on('pageerror',lambda e:errs.append(str(e)))
-    await pg.goto('http://localhost:8769/index.html');await pg.wait_for_timeout(800)
+    await pg.goto('http://localhost:8769/?jogar');await pg.wait_for_timeout(800)
     r=await pg.evaluate("""()=>{const C=C11;C.newGame(C.D.divisions.B[3],'T');const G=C.G;
       const where=pid=>Object.keys(G.clubs).filter(id=>G.clubs[id].players.includes(pid));
       /* 1) jogador de outro clube num lote aberto; você compra por proposta antes do leilão fechar */

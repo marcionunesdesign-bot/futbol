@@ -5,7 +5,7 @@ async def main():
     b=await p.chromium.launch(args=['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist'])
     ctx=await b.new_context(viewport={'width':844,'height':390},is_mobile=True,has_touch=True,device_scale_factor=2)
     pg=await ctx.new_page();errs=[];pg.on('pageerror',lambda e:errs.append(str(e)))
-    await pg.goto('http://localhost:8769/index.html');await pg.wait_for_timeout(800)
+    await pg.goto('http://localhost:8769/?jogar');await pg.wait_for_timeout(800)
     await pg.evaluate("document.querySelector('[data-div=A]').click()");await pg.evaluate("document.querySelector('#s-go').click()");await pg.wait_for_timeout(1000)
     await pg.evaluate("U.closeModal&&U.closeModal();U.go('match')");await pg.wait_for_timeout(500)
     await pg.evaluate("document.querySelector('#mv-full').click()");await pg.wait_for_timeout(7000)

@@ -7,7 +7,7 @@ async def main():
     ctx=await b.new_context(viewport={'width':844,'height':390},is_mobile=True,has_touch=True,device_scale_factor=2)
     await ctx.add_init_script("try{localStorage.setItem('c11-ui',JSON.stringify({gfx:'%s'}))}catch(e){}"%G)
     pg=await ctx.new_page();errs=[];pg.on('pageerror',lambda e:errs.append(str(e)))
-    await pg.goto('http://localhost:8769/index.html');await pg.wait_for_timeout(800)
+    await pg.goto('http://localhost:8769/?jogar');await pg.wait_for_timeout(800)
     await pg.evaluate("document.querySelector('[data-div=A]').click()");await pg.evaluate("document.querySelector('#s-go').click()");await pg.wait_for_timeout(1000)
     await pg.evaluate("U.closeModal&&U.closeModal();U.go('match')");await pg.wait_for_timeout(500)
     await pg.evaluate("document.querySelector('#mv-full').click()");await pg.wait_for_timeout(6000 if G!='2d' else 1500)
