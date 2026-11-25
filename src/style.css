@@ -1307,7 +1307,7 @@ body.light #modal.recap-modal>.frame{background:linear-gradient(180deg,#14171b,#
 .acoach-w>*{pointer-events:auto}
 .acoach{width:100%;box-sizing:border-box;background:#0d1013ee;color:#f1efe9;border:1px solid var(--acc);border-left-width:4px;border-radius:12px;padding:10px 12px;box-shadow:0 10px 28px #000b;animation:acin .25s ease;font-size:13.5px;line-height:1.35}
 @keyframes acin{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
-.acoach.eval.good{border-color:#3ecf6e}.acoach.eval.bad{border-color:var(--bad,#ff5b5b)}.acoach.eval.warn{border-color:var(--warn,#f2b233)}
+.acoach.ac-eval.good{border-color:#3ecf6e}.acoach.ac-eval.bad{border-color:var(--bad,#ff5b5b)}.acoach.ac-eval.warn{border-color:var(--warn,#f2b233)}
 .acoach .ac-h{display:flex;align-items:center;gap:6px;font:800 12px var(--hd);letter-spacing:.1em;text-transform:uppercase;color:#c9cdd0;margin-bottom:4px}.acoach .ac-h span{margin-left:auto;color:#8d959c}
 .acoach .ac-obs{margin:0 0 4px}.acoach .ac-sug{margin:0 0 8px;color:#d7dadc}.acoach .ac-sug small{display:block;color:#9aa3ab;font-size:12px;margin-top:1px}
 .acoach .ac-b,.acoach .ac-v{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
@@ -1315,9 +1315,9 @@ body.light #modal.recap-modal>.frame{background:linear-gradient(180deg,#14171b,#
 .acoach .ac-l .up b{color:#4fe08a}.acoach .ac-l .dn b{color:#ff7272}
 .acoach .ac-v em,.co-hist em{font-style:normal;font:800 12px var(--hd);letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:99px;margin-right:auto}
 .ac-v em.good,.co-hist em.good{background:#3ecf6e26;color:#4fe08a}.ac-v em.bad,.co-hist em.bad{background:#ff5b5b26;color:#ff7a7a}.ac-v em.warn,.co-hist em.warn{background:#f2b23326;color:#f5c055}
-.acoach.sub .st-txt{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}.acoach.sub .row{justify-content:flex-start}
+.acoach.ac-sub .st-txt{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}.acoach.ac-sub .row{justify-content:flex-start}
 .acoach-trk{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:99px;background:#0d1013e6;border:1px solid #ffffff24;color:#d7dadc;font-size:12.5px;max-width:100%}
-.acoach-trk span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.acoach-trk span{min-width:0;line-height:1.25}
 .acoach-trk i{flex:0 0 54px;height:5px;border-radius:9px;background:#ffffff1f;overflow:hidden}.acoach-trk i s{display:block;height:100%;background:var(--acc2,var(--acc));transition:width .4s}
 .co-hist{margin:12px 0 4px}.co-r{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px}.co-r>span{color:var(--ink3);width:30px}.co-r em{margin:0 0 0 auto!important}
 body.light .acoach,body.light .acoach-trk{background:#ffffffee;color:#1b1f23}body.light .acoach .ac-sug{color:#333}body.light .acoach .ac-l>div{color:#333}
@@ -1342,3 +1342,34 @@ body.light .acoach,body.light .acoach-trk{background:#ffffffee;color:#1b1f23}bod
 .co-half p{margin:4px 0;font-size:14px;color:var(--ink2)}.co-half .sadv-r{margin-top:8px}
 @media (max-height:520px) and (orientation:landscape){.pitchbox .replay{right:auto!important;left:50%!important;transform:translateX(-50%);top:max(10px,env(safe-area-inset-top))!important}}
 @media (min-width:561px){.ht-stats .co-half{grid-column:1;margin-top:10px}.ht-stats>.hm-wrap,.ht-stats>.heat{grid-row:span 3}}
+/* pênaltis: escudo · placar · escudo */
+.pso-h{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:14px;margin:12px 0 16px}
+.pso-t{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;text-align:center}.pso-t b{font:800 20px var(--hd);text-transform:uppercase;overflow-wrap:anywhere}
+.pso-sc{font:800 64px var(--hd);color:#fff;white-space:nowrap}
+@media (max-width:560px){.pso-h{gap:8px}.pso-t b{font-size:15px}.pso-sc{font-size:44px}.pso-t svg{width:44px;height:auto}}
+body.light .pso-sc{color:var(--ink)}
+/* finanças: valor nunca sai da tela */
+.fin-r>span{flex:1 1 auto;min-width:0}.fin-r>b{flex:none}
+@media (max-width:560px){.fin-r{font-size:12.5px}.fin-r b{font-size:15px!important}}
+/* celular deitado: lances / tática / elenco num painel por cima do campo (a página não rola) */
+.side-x{display:none}
+@media (max-height:520px) and (orientation:landscape){
+  body[data-view=match]:has(.pitchbox) main{overflow:hidden!important}
+  .matchv>.side{position:fixed;top:0;right:0;bottom:0;width:min(400px,48vw);z-index:45;background:#0b0d0ff7;backdrop-filter:blur(10px);padding:max(8px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) 10px;overflow:auto;transform:translateX(105%);transition:transform .25s ease;box-shadow:-12px 0 30px #000a;gap:8px;display:flex;flex-direction:column}
+  body.side-open .matchv>.side{transform:none}
+  .matchv>.side .frame{padding:10px!important;flex:none!important;min-height:auto!important}
+  .matchv>.side .feed{max-height:none!important;overflow:visible!important}
+  .side-x{display:block;align-self:flex-end;width:38px;height:38px;border-radius:50%;border:1px solid #ffffff38;background:#0b0d0f;color:#fff;font-size:16px;flex:none}
+  /* ícones bem no canto */
+  .mhud{top:6px!important;right:6px!important;gap:6px!important}/* a caixa do campo já desconta a área do entalhe */
+  .mhud>button{width:38px;height:38px}.mhud>button svg{width:20px;height:20px}
+}
+@media (max-width:760px) and (orientation:portrait){.mhud{right:4px!important;top:calc(var(--sch,38px) + 4px)!important}}
+body.light .matchv>.side{background:#f3f5f7f7}
+@media (max-height:520px) and (orientation:landscape){.matchv>.side>#mstats{order:3}.matchv>.side>.side-x{order:0;position:sticky;top:0;z-index:2}.matchv>.side>.frame:not(#mstats){order:1}
+  .matchv>.side{flex-direction:column}.side-x{margin-bottom:-46px}.matchv>.side>.frame:not(#mstats) .seg{margin-right:46px}}
+
+/* cartão do auxiliar: nunca herda layout de outras telas */
+.acoach:not([hidden]){display:block!important;height:auto!important;grid-template-columns:none!important}.acoach[hidden],.acoach-trk[hidden]{display:none!important}
+.acoach-trk{width:max-content;max-width:100%;padding:5px 10px;font-size:12px;gap:7px}.acoach-trk i{flex-basis:40px}
+@media (max-height:520px) and (orientation:landscape){.acoach-w{width:min(380px,46%)}}

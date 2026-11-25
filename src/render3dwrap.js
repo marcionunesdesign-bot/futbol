@@ -1,7 +1,7 @@
 // FUTBOL — ponte para o motor 3D: usa o 2D enquanto o 3D carrega (ou se o aparelho não suportar WebGL)
 const C11Render3D=(()=>{
   const base=()=>{try{return new URL('3d/',location.href.replace(/[#?].*$/,'').replace(/[^/]*$/,'')).href}catch(e){return '3d/'}};
-  let modP=null;const mod=()=>modP||(modP=import(base()+'render3d.js?v=37'));
+  let modP=null;const mod=()=>modP||(modP=import(base()+'render3d.js?v=38'));
   function supported(){try{const c=document.createElement('canvas');return !!(window.WebGL2RenderingContext&&c.getContext('webgl2'))}catch(e){return false}}
   class Hybrid{
     constructor(cv,m,opts){this.r2=new C11Render.Renderer(cv,m,opts);const d2=this.r2.draw.bind(this.r2);this.d2=d2;this.r2.draw=(v,dt)=>this.draw(v,dt);this.cv=cv;this.m=m;this.on=false;this.eng=null;this._a=1;

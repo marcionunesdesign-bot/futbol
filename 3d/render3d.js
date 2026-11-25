@@ -1,6 +1,6 @@
 // FUTBOL — motor visual 3D da partida (Three.js)
 import * as T from './three.module.min.js';
-import {loadAssets,makePlayer} from './players3d.js?v=37';
+import {loadAssets,makePlayer} from './players3d.js?v=38';
 export {loadAssets};
 
 const L=105,W=68,GW=7.32,GH=2.44;
@@ -411,12 +411,17 @@ export class Engine{
     this.zk=(this.zk||1)+(((inBox?1.22:v.dead?1.1:counter?.86:1))-(this.zk||1))*Math.min(1,dt*.8);
     const Z=(zoom||1)*this.zk;const portrait=this.w<this.h*1.05;
     let tx=bx,tz=bz;if(v.cele&&v.cele.mp){const m=v.cele.mp;tx=wx(v._flipped?L-m.x:m.x);tz=wz(v._flipped?W-m.y:m.y)}
-    this.camT.x+=(clamp(tx,-L/2+6,L/2-6)-this.camT.x)*Math.min(1,dt*2.2);this.camT.z+=(clamp(tz*.55,-12,12)-this.camT.z)*Math.min(1,dt*1.6);
+    this.camT.x+=(clamp(tx,-L/2+6,L/2-6)-this.camT.x)*Math.min(1,dt*2.2);this.camT.z+=(clamp(tz*.62,-14,14)-this.camT.z)*Math.min(1,dt*1.6);
     const dist=(portrait?58:64)/Math.pow(Z,.5),hgt=(portrait?24:19)/Math.pow(Z,.3);
     const camX=this.camT.x*.4;this.cam.position.set(camX,hgt,W/2+dist*.62);
     const span=(portrait?24:40)/Z;const d=this.cam.position.distanceTo(new T.Vector3(this.camT.x,0,this.camT.z));
     const hf=2*Math.atan(span/2/d);this.cam.fov=T.MathUtils.radToDeg(2*Math.atan(Math.tan(hf/2)/this.cam.aspect));this.cam.updateProjectionMatrix();
     this.cam.lookAt(this.camT.x,1.5,this.camT.z);
+    {/* tela larga (celular deitado): enquadra da lateral de cima até a de baixo, mirando no meio dessa faixa (sem sobrar arquibancada) */
+      const wide=this.w>this.h*1.6;const z1=wide?W/2+1.5:Math.min(W/2+1,Math.max(bz+6,this.camT.z+12)),z0=wide?-W/2-.5:Math.max(-W/2-1,Math.min(bz-6,this.camT.z-12));
+      const P=this.cam.position;const d0=new T.Vector3(this.camT.x-P.x,-P.y,z0-P.z).normalize(),d1=new T.Vector3(this.camT.x-P.x,-P.y,z1-P.z).normalize();
+      const half=Math.acos(clamp(d0.dot(d1),-1,1))/2*1.08,cur=T.MathUtils.degToRad(this.cam.fov)/2;
+      if(half>cur){const dir=d0.add(d1).normalize();const fv=Math.min(58,T.MathUtils.radToDeg(half*2));this.cam.fov=fv;this.cam.updateProjectionMatrix();this.cam.lookAt(P.x+dir.x*30,P.y+dir.y*30,P.z+dir.z*30)}}
     if(typeof window!=='undefined'&&window.__dbgCam){this.cam.position.set(bx-5,3.2,bz+9);this.cam.fov=38;this.cam.updateProjectionMatrix();this.cam.lookAt(bx,.9,bz)}
     if(v.dead&&v.setup&&v.setup.kind==='corner'&&!v.replay&&intro==null){// (3) escanteio visto de trás do gol
       const sg=bx>0?1:-1;const cp=new T.Vector3(sg*(L/2+11),10.5,-bz*.12);this.cornerCam=this.cornerCam?this.cornerCam.lerp(cp,Math.min(1,dt*3)):this.cam.position.clone().lerp(cp,.15);

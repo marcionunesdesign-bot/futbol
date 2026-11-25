@@ -115,21 +115,21 @@ const coIc=p=>`<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true
 const IC_COACH='M12,2A2,2 0 0,1 14,4A2,2 0 0,1 12,6A2,2 0 0,1 10,4A2,2 0 0,1 12,2M10.5,7H13.5A2,2 0 0,1 15.5,9V14.5H14V22H10V14.5H8.5V9A2,2 0 0,1 10.5,7M20,17A2,2 0 0,1 22,19A2,2 0 0,1 20,21A2,2 0 0,1 18,19A2,2 0 0,1 20,17Z';
 const IC_CHART='M16,11.78L20.24,4.45L21.97,5.45L16.74,14.5L10.23,10.75L5.46,19H22V21H2V3H4V17.54L9.5,8L16,11.78Z';
 function coTrack(){const el=$('#acoach-trk');if(!el)return;const ch=CO.changes.find(c=>!c.done);if(!ch){el.hidden=true;return}const m=st.m;const k=Math.min(8,Math.max(0,m.minute-ch.min));
-  el.hidden=false;el.innerHTML=`${coIc(IC_CHART)}<span>Medindo efeito: <b>${esc(ch.diff.map(x=>coLab(x,ch.to[x])).join(' · '))}</b></span><i><s style="width:${k/8*100}%"></s></i>`}
+  el.hidden=false;el.innerHTML=`${coIc(IC_CHART)}<span>Medindo: <b>${esc(ch.diff.map(x=>coLab(x,ch.to[x])).join(' · '))}</b></span><i><s style="width:${k/8*100}%"></s></i>`}
 function coShow(){const el=$('#acoach');if(!el)return;coTrack();const now=performance.now();
   if(CO.cur&&now<CO.hideAt)return;if(CO.cur){CO.cur=null;el.hidden=true;el.innerHTML=''}
   /* substituições do auxiliar entram na mesma fila */
   if(!CO.queue.length||st.replay||st.goalRp||(st.m&&st.m.goalCele))return;/* não cobre gol nem replay */const q=CO.queue.shift();if(!q)return;CO.cur=q;const m=st.m;
-  if(q.k==='tac'){const s=q.s;el.className='acoach tac';el.innerHTML=`<div class="ac-h">${coIc(IC_COACH)}<b>Auxiliar</b><span>${m.minute}'</span></div><p class="ac-obs">${esc(s.obs)}</p><p class="ac-sug">Sugestão: <b>${esc(s.txt)}</b><small>${esc(s.why)}</small></p><div class="ac-b"><button class="btn xs" data-coapply>Aplicar</button><button class="btn ghost xs" data-cox>Agora não</button></div>`;
+  if(q.k==='tac'){const s=q.s;el.className='acoach ac-tac';el.innerHTML=`<div class="ac-h">${coIc(IC_COACH)}<b>Auxiliar</b><span>${m.minute}'</span></div><p class="ac-obs">${esc(s.obs)}</p><p class="ac-sug">Sugestão: <b>${esc(s.txt)}</b><small>${esc(s.why)}</small></p><div class="ac-b"><button class="btn xs" data-coapply>Aplicar</button><button class="btn ghost xs" data-cox>Agora não</button></div>`;
     el.querySelector('[data-coapply]').onclick=()=>{const T=st.m.T[st.us];CO.assist={min:st.m.minute,txt:s.txt};T.tac[s.k]=s.v;C.save();A.click&&A.click();U.toast('Instrução enviada. Vou medir o efeito nos próximos 8 minutos.');coHide();coTick();if(st.tab==='tac')panel()};
     CO.hideAt=now+20000}
   else if(q.k==='eval'){const ch=q.ch,r=ch.res;if(!r){CO.cur=null;return coShow()}const V={good:['Está funcionando','good'],neutral:['Sem efeito claro ainda','warn'],bad:['Não está funcionando','bad']}[r.verd];
-    el.className='acoach eval '+V[1];el.innerHTML=`<div class="ac-h">${coIc(IC_CHART)}<b>Retorno da decisão</b><span>${ch.min}' → ${m.minute}'</span></div><p class="ac-obs"><b>${esc(ch.diff.map(x=>coLab(x,ch.to[x])).join(' · '))}</b></p>
+    el.className='acoach ac-eval '+V[1];el.innerHTML=`<div class="ac-h">${coIc(IC_CHART)}<b>Retorno da decisão</b><span>${ch.min}' → ${m.minute}'</span></div><p class="ac-obs"><b>${esc(ch.diff.map(x=>coLab(x,ch.to[x])).join(' · '))}</b></p>
       <div class="ac-l">${r.lines.map(l=>`<div class="${l.good>0?'up':l.good<0?'dn':''}"><span>${esc(l.lab)}</span><b>${l.b!==''?esc(l.b)+' → ':''}${esc(l.a)} ${l.dir>0?'▲':l.dir<0?'▼':'='}</b></div>`).join('')}</div>
       <div class="ac-v"><em class="${V[1]}">${V[0]}</em>${r.verd==='bad'?`<button class="btn xs" data-coundo>Voltar como estava</button>`:''}<button class="btn ghost xs" data-cox>${r.verd==='bad'?'Manter':'OK'}</button></div>`;
     const u=el.querySelector('[data-coundo]');if(u)u.onclick=()=>{const T=st.m.T[st.us];ch.diff.forEach(k=>T.tac[k]=ch.from[k]);C.save();U.toast('Tática anterior de volta.');coHide();coTick();if(st.tab==='tac')panel()};
     CO.hideAt=now+(r.verd==='bad'?22000:15000)}
-  else if(q.k==='sub'){el.className='acoach sub';el.innerHTML=q.html;bindAdvice(el);const x=el.querySelector('#tip-x');if(x)x.onclick=coHide;CO.hideAt=now+16000}
+  else if(q.k==='sub'){el.className='acoach ac-sub';el.innerHTML=q.html;bindAdvice(el);const x=el.querySelector('#tip-x');if(x)x.onclick=coHide;CO.hideAt=now+16000}
   el.hidden=false;const x=el.querySelector('[data-cox]');if(x)x.onclick=coHide}
 function coHide(){CO.hideAt=0;const el=$('#acoach');if(el){el.hidden=true;el.innerHTML=''}CO.cur=null}
 function coHalfHtml(){/* intervalo: leitura do 1º tempo + decisões tomadas */const m=st.m;if(!CO.hist.length)return coHistHtml();const W=coWin(CO.hist[0],coSnap());if(!W)return coHistHtml();const T=m.T[st.us],t=T.tac;const L=[];let sug=null;
@@ -301,7 +301,7 @@ function layout(){
       <div class="sp"></div>
       <button class="btn ghost sm" id="mv-zoom" title="Zoom da câmera">🔍 ${zoomLbl()}</button><div class="seg" style="width:170px"><button data-cam="tv" class="${st.cam==='tv'?'on':''}">TV</button><button data-cam="top" class="${st.cam==='top'?'on':''}">Tática</button></div>
       <button class="btn sm" id="mv-tac">📋 Prancheta</button><button class="btn ghost sm" id="mv-ar">${st.arrows?'Ocultar setas':'Ver setas'}</button><button class="btn ghost sm" id="mv-mini">${U.PREF.mini===false?'Mostrar mapa':'Ocultar mapa'}</button><button class="btn ghost sm" id="mv-gq">Gráfico: ${({auto:'automático',leve:'leve',alto:'alto'})[U.PREF.gq||'auto']}</button><button class="btn ghost sm" id="mv-end">Simular até o fim</button></div></div>
-   <div class="side"><div class="frame" id="mstats"></div>
+   <div class="side"><button class="side-x" data-sidex aria-label="Fechar">✕</button><div class="frame" id="mstats"></div>
     <div class="frame" style="flex:1;display:flex;flex-direction:column;min-height:0"><div class="seg" style="margin-bottom:10px">${[['feed','Lances'],['tac','Tática'],['sub','Elenco']].map(([k,l])=>`<button data-mt="${k}" class="${st.tab===k?'on':''}">${l}</button>`).join('')}</div><div class="feed" id="mpanel"></div></div></div></div>`;
   const cv=$('#mcv');const R3=U.PREF.gfx!=='2d'&&typeof C11Render3D!=='undefined'&&C11Render3D.supported();st.rd=new (R3?C11Render3D.Hybrid:C11Render.Renderer)(cv,st.m,{mode:st.cam,userSide:st.us,arrows:st.arrows,zoom:zoomVal()});
   $('#mv-play').onclick=toggle;$('#mv-end').onclick=()=>{if(st.done)return;if(st.um&&st.um.online){U.toast(st.net?'Partida ao vivo: não dá para pular.':'Jogo de liga online: assista até o fim ou use o resultado rápido antes de começar.');return}if(!confirm('Simular o restante da partida?'))return;st.skipping=true;U.closeModal();st.m.runToEnd();st.skipping=false;finish()};
@@ -315,7 +315,7 @@ function layout(){
   const zb=$('#mv-zoom');if(zb)zb.onclick=()=>{const L=[1,1.5,2];const cur=U.PREF.zoom==null||U.PREF.zoom==='auto'?zoomVal():U.PREF.zoom;U.PREF.zoom=L.find(x=>x>cur+.01)||L[0];try{localStorage.setItem('c11-ui',JSON.stringify(U.PREF))}catch(e){}st.rd.setZoom(U.PREF.zoom);zb.textContent='🔍 '+zoomLbl();st.rd.draw()};
   $$('[data-cam]').forEach(b=>b.onclick=()=>{st.cam=b.dataset.cam;st.rd.setMode(st.cam);$$('[data-cam]').forEach(x=>x.classList.toggle('on',x===b));st.rd.draw()});
   $$('[data-mt]').forEach(b=>b.onclick=()=>{st.tab=b.dataset.mt;$$('[data-mt]').forEach(x=>x.classList.toggle('on',x===b));panel()});
-  stats();panel();st.rd.draw();hudBind();coTrack();
+  stats();panel();st.rd.draw();hudBind();coTrack();sideOpen(false);{const sx=$('[data-sidex]');if(sx)sx.onclick=()=>sideOpen(false)}
   {const rp=$('#rp');if(rp){rp.style.cursor='pointer';rp.title='Toque para pular';rp.onclick=()=>{if(st.replay){st.replay.t=1e9}}}}
   {const mb=$('#pbox .mbar'),pb=$('#pbox');if(mb&&pb){const btn=document.createElement('button');btn.className='mbar-more';btn.textContent='›';btn.title='Mais opções';pb.appendChild(btn);
     const upd=()=>{const over=mb.scrollWidth>mb.clientWidth+4&&getComputedStyle(mb).position==='absolute';const end=mb.scrollLeft+mb.clientWidth>=mb.scrollWidth-6;btn.classList.toggle('on',over&&!end);
@@ -339,14 +339,15 @@ function hudFill(k){const pop=$('#mpop');if(!pop||pop.hidden)return;const mb=s=>
     it.push(seg('Assistir',[{s:'[data-mm=full]',l:'Jogo completo',on:st.mode==='full'},{s:'[data-mm=hl]',l:'Só os lances',on:st.mode==='hl'}]))}
   else if(k==='cam'){it.push(seg('Câmera',[{s:'[data-cam=tv]',l:'TV',on:st.cam==='tv'},{s:'[data-cam=top]',l:'Tática',on:st.cam==='top'}]));
     it.push(`<div class="mp-r">${btn('#mv-zoom','Zoom: '+zoomLbl(),'ghost')}${btn('#mv-ar',st.arrows?'Ocultar setas':'Ver setas','ghost')}${btn('#mv-mini',U.PREF.mini===false?'Mostrar mapa':'Ocultar mapa','ghost')}</div>`)}
-  else if(k==='cfg'){it.push(`<div class="mp-c">${btn('@stats','Estatísticas, lances e trocas','ghost')}${btn('#mv-gq','Gráfico: '+({auto:'automático',leve:'leve',alto:'alto'})[U.PREF.gq||'auto'],'ghost')}${btn('#mv-end','Simular até o fim','ghost')}${btn('@exit','Sair para o menu','ghost')}</div>`)}
+  else if(k==='cfg'){it.push(`<div class="mp-c">${btn('@stats','Lances, tática, elenco e estatísticas','ghost')}${btn('#mv-gq','Gráfico: '+({auto:'automático',leve:'leve',alto:'alto'})[U.PREF.gq||'auto'],'ghost')}${btn('#mv-end','Simular até o fim','ghost')}${btn('@exit','Sair para o menu','ghost')}</div>`)}
   pop.innerHTML=it.join('');
   $$('[data-mp]',pop).forEach(b=>b.onclick=e=>{e.stopPropagation();const s=b.dataset.mp;
     if(s==='@exit'){hudPop(null);U.go('home');return}
-    if(s==='@stats'){hudPop(null);const sd=$('.matchv .side');if(sd)sd.scrollIntoView({behavior:'smooth',block:'start'});return}
+    if(s==='@stats'){hudPop(null);if(matchMedia('(max-height:520px) and (orientation:landscape)').matches){sideOpen(true);return}const sd=$('.matchv .side');if(sd)sd.scrollIntoView({behavior:'smooth',block:'start'});return}
     const t=mb(s);if(t)t.click();if(s==='#mv-end'||s==='#mv-play'&&k==='spd'&&false){hudPop(null);return}setTimeout(()=>hudFill(k),40)})}
+function sideOpen(on){document.body.classList.toggle('side-open',!!on)}
 function hudBind(){$$('[data-hud]').forEach(b=>b.onclick=e=>{e.stopPropagation();const k=b.dataset.hud;if(k==='tac'){hudPop(null);const t=$('#mv-tac');if(t)t.click();return}hudPop(k)});
-  const pb=$('#pbox');if(pb&&!pb._hudc){pb._hudc=1;pb.addEventListener('click',e=>{if(!e.target.closest('.mhud,.mbar'))hudPop(null)})}}
+  const pb=$('#pbox');if(pb&&!pb._hudc){pb._hudc=1;pb.addEventListener('click',e=>{if(!e.target.closest('.mhud,.mbar'))hudPop(null);if(!e.target.closest('.acoach-w'))sideOpen(false)})}}
 
 function zoomVal(){const z=U.PREF.zoom;if(z==null||z==='auto')return innerWidth<600?1.6:innerHeight<520?1.3:1;return +z}
 function zoomLbl(){const z=zoomVal();return z>=1.9?'Perto':z>1.1?'Médio':'Longe'}
@@ -413,8 +414,10 @@ function onEvent(e){
   if(e.text){st.feedHtml=`<div class="ev ${e.type}"><time>${e.min}'</time><p>${e.type==='goal'?'⚽ ':e.type==='card'?'🟨 ':e.type==='red'?'🟥 ':e.type==='sub'?'🔁 ':e.type==='inj'?'✚ ':''}${esc(e.text)}</p></div>`+st.feedHtml;if(st.tab==='feed')panel()}
   stats();
 }
+function lumOf(c){const h=String(c||'').replace('#','');if(h.length<6)return .5;const r=parseInt(h.slice(0,2),16)/255,g=parseInt(h.slice(2,4),16)/255,b=parseInt(h.slice(4,6),16)/255;return .2126*r+.7152*g+.0722*b}
+function barCol(i){const k=st.rd&&st.rd.kits&&st.rd.kits[i];if(!k)return i?'#8d959c':'#fff';const a=k.c1,b=k.c2;if(lumOf(a)>=.16)return a;if(lumOf(b)>=.16&&String(b).toLowerCase()!==String((st.rd.kits[1-i]||{}).c1).toLowerCase())return b;return i?'#8d959c':'#e9ecef'}
 function stats(){const m=st.m;const el=$('#mstats');if(!el)return;const [H,Aw]=m.T;const tot=H.st.pos+Aw.st.pos||1;
-  const bar=(l,a,b,fmt=x=>x)=>{const s=(a+b)||1;return `<div class="sbar"><b>${fmt(a)}</b><div class="mid"><span class="lbl">${l}</span><div class="tr"><i style="width:${a/s*100}%;background:${st.rd?st.rd.kits[0].c1:'#fff'}"></i><i style="width:${b/s*100}%;background:${st.rd?st.rd.kits[1].c1:'#888'}"></i></div></div><b style="text-align:right">${fmt(b)}</b></div>`};
+  const bar=(l,a,b,fmt=x=>x)=>{const s=(a+b)||1;return `<div class="sbar"><b>${fmt(a)}</b><div class="mid"><span class="lbl">${l}</span><div class="tr"><i style="width:${a/s*100}%;background:${barCol(0)}"></i><i style="width:${b/s*100}%;background:${barCol(1)}"></i></div></div><b style="text-align:right">${fmt(b)}</b></div>`};
   el.innerHTML=bar('Posse',Math.round(H.st.pos/tot*100),Math.round(Aw.st.pos/tot*100),x=>x+'%')+bar('Finalizações',H.st.sh,Aw.st.sh)+bar('No alvo',H.st.sot,Aw.st.sot)+bar('Chances (xG)',+H.st.xg.toFixed(1),+Aw.st.xg.toFixed(1))+bar('Passes certos',H.st.pc,Aw.st.pc)+bar('Desarmes',H.st.tk,Aw.st.tk)+bar('Escanteios',H.st.co,Aw.st.co)}
 function panel(){const el=$('#mpanel');if(!el)return;const m=st.m;const T=m.T[st.us];const t=T.tac;
   if(st.tab==='feed'){el.innerHTML=st.feedHtml||`<p class="dim">O jogo vai começar${stadTxt()}.</p>`;return}
@@ -499,7 +502,7 @@ function shootoutRun(){
   const aiOrder=s=>m.active(T[s]).filter(x=>T[s].slots[x.si].role!=='GOL').sort((a,b)=>penSkill(b)-penSkill(a));
   const lists=[0,1].map(s=>s===U2?so.order.map(o=>({mp:m.active(T[s]).find(x=>x.id===o.id),side:o.side,pow:o.pow})).filter(o=>o.mp):aiOrder(s).map(x=>({mp:x,side:'?',pow:Math.random()<.5?'col':'for'})));
   const sc=[0,0],log=[[],[]];let i=0,done=false;const first=Math.random()<.5?0:1;
-  const view=()=>`<div class="eyebrow">Disputa de pênaltis</div><div class="row" style="justify-content:center;gap:28px;margin:12px 0 16px"><div class="col" style="align-items:center;font:800 20px var(--hd);text-transform:uppercase;width:200px">${U.crest(T[0].club,54)}${esc(T[0].name)}</div><div style="font:800 64px var(--hd);color:#fff">${sc[0]} × ${sc[1]}</div><div class="col" style="align-items:center;font:800 20px var(--hd);text-transform:uppercase;width:200px">${U.crest(T[1].club,54)}${esc(T[1].name)}</div></div>
+  const view=()=>`<div class="eyebrow">Disputa de pênaltis</div><div class="pso-h"><div class="pso-t">${U.crest(T[0].club,54)}<b>${esc(T[0].name)}</b></div><div class="pso-sc">${sc[0]} × ${sc[1]}</div><div class="pso-t">${U.crest(T[1].club,54)}<b>${esc(T[1].name)}</b></div></div>
     <div class="grid g2">${[0,1].map(s=>`<div>${log[s].map(l=>`<div class="row" style="padding:5px 0;border-bottom:1px solid var(--line)"><span style="width:26px;font-size:18px">${l.r==='gol'?'⚽':l.r==='defesa'?'🧤':'❌'}</span><span style="flex:1">${esc(l.n)}</span><span class="dim" style="font-size:12px">${{L:'esquerda',M:'meio',R:'direita'}[l.side]}${l.r==='defesa'?' · goleiro pegou':l.r==='fora'?' · para fora':''}</span></div>`).join('')}</div>`).join('')}</div>
     <div id="so-end" style="margin-top:14px"></div>`;
   U.openModal(view());$('#modal').onclick=null;{const xb=$('#modal .x');if(xb)xb.remove()}

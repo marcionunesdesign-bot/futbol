@@ -89,7 +89,7 @@ function hnGo(v){if(!HN.on)return;const st=history.state||{};const d=st.d||0;try
   else if(st.v==='player'&&v===st.from&&d>0){HN.skip++;history.back()}
   else if(v==='player'){if(st.v==='player')history.replaceState({...st},'');else history.pushState({v,from:st.base?'home':st.v,d:d+1},'')}
   else if(st.base)history.pushState({v,d:1},'');else history.replaceState({v,d},'')}catch(e){}}
-function go(v,fromPop){if(!fromPop)hnGo(v);document.body.dataset.view=v;if(v!=='auction'&&typeof auStage==='function')auStage(false);if(MV.live&&v!=='match'&&MV.m&&MV.m.phase!=='ft'){MV.pause()}view=v;$$('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));renderTop();const f={home:vHome,squad:vSquad,tactics:()=>TV.render($('#v-tactics')),training:vTraining,youth:vYouth,club:vClub,market:vMarket,online:()=>ON.render(),auction:vAuction,league:vLeague,match:MV.render,player:vPlayer}[v];f&&f();$('main').scrollTop=0;if(A.scene)A.scene(v==='tactics'?'tac':'menu');if(v==='match'&&A.ready&&A.preload)A.preload();
+function go(v,fromPop){if(!fromPop)hnGo(v);document.body.classList.remove('side-open');document.body.dataset.view=v;if(v!=='auction'&&typeof auStage==='function')auStage(false);if(MV.live&&v!=='match'&&MV.m&&MV.m.phase!=='ft'){MV.pause()}view=v;$$('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));renderTop();const f={home:vHome,squad:vSquad,tactics:()=>TV.render($('#v-tactics')),training:vTraining,youth:vYouth,club:vClub,market:vMarket,online:()=>ON.render(),auction:vAuction,league:vLeague,match:MV.render,player:vPlayer}[v];f&&f();$('main').scrollTop=0;if(A.scene)A.scene(v==='tactics'?'tac':'menu');if(v==='match'&&A.ready&&A.preload)A.preload();
   if(v!=='match'&&A.ready){A.crowd(false);A.fadeMusic(1)}}
 
 /* ---------- início ---------- */
