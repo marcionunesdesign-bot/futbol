@@ -1246,3 +1246,18 @@ body.light #modal.recap-modal>.frame{background:linear-gradient(180deg,#14171b,#
 .ev.lance p{opacity:.82;font-weight:500}.ev.lance time{opacity:.6}
 
 .tauto{display:flex;align-items:center;gap:14px;justify-content:space-between;margin-bottom:16px;padding:12px 16px}.tauto>div{display:flex;flex-direction:column;gap:2px}.tauto.on{border-color:var(--acc);box-shadow:inset 3px 0 0 var(--acc)}
+
+/* voltar ao Início (celular) */
+.backbtn{display:none}
+@media (max-width:760px){.top .backbtn:not([hidden]){display:inline-flex;align-items:center;justify-content:center;color:#fff;flex:0 0 auto;margin-right:2px}}
+.pg-player{max-width:980px;margin:0 auto}
+.pp-top{display:flex;align-items:center;gap:10px;margin:4px 0 12px}.pp-top .pnav{margin:0 0 0 auto;position:static}
+.pp-back{display:inline-flex;align-items:center;gap:6px}
+.pp-body{padding:20px}
+@media (max-width:760px){.pp-body{padding:14px 12px;border-radius:14px}.pg-player .title{font-size:34px!important}.pp-top{margin:0 0 10px}}
+@media (max-width:760px){
+  .pp-body>.row:first-child{flex-wrap:wrap;gap:10px 14px!important;justify-content:space-between}
+  .pp-body>.row:first-child>div[style*="flex:1"]{order:3;flex:1 1 100%!important}
+  .pp-body>.row:first-child svg{max-width:96px;height:auto}
+}
+@media (hover:none){.nav button:hover{color:var(--ink2)}.nav button.on:hover{color:var(--accink)}}

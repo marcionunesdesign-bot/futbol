@@ -74,11 +74,22 @@ function renderTop(){
   const g=G();const c=C.userClub();const di=C.dateInfo();
   const auOpen=g.auction&&g.auction.lots.some(x=>!x.done);
   $('#nav').innerHTML=NAV.map(([k,l])=>`<button data-go="${k}" class="${view===k?'on':''}">${l}${k==='auction'&&auOpen?'<i></i>':''}${k==='home'&&g.inbox.some(m=>!m.read)?'<i></i>':''}${k==='training'&&g.trainPending&&!g.autoTrain&&C.nextUserMatch()?'<i></i>':''}</button>`).join('')+`<button data-more class="more ${MORE.includes(view)?'on':''}">Mais${auOpen?'<i></i>':''}</button>`;
-  $('#k-money').textContent=money(c.money);$('#k-date').textContent=di?di.label.replace('Taça Nacional · ','Taça · '):'Fim de temporada';$('#k-season').textContent=`Temporada ${g.season}`;
+  {const bb=$('#b-back');if(bb){bb.hidden=view==='home';const st=history.state||{};bb.dataset.go=view==='player'&&st.from?st.from:'home'}}$('#k-money').textContent=money(c.money);$('#k-date').textContent=di?di.label.replace('Taça Nacional · ','Taça · '):'Fim de temporada';$('#k-season').textContent=`Temporada ${g.season}`;
   $('#top-crest').innerHTML=crest(c,30);
   $('#b-music').classList.toggle('off',!A.S.music);const bc=$('#b-cloud');if(bc)bc.hidden=!(ACC.st.user&&G().slot);$('#b-sfx').classList.toggle('off',!A.S.sfx);
 }
-function go(v){document.body.dataset.view=v;if(v!=='auction'&&typeof auStage==='function')auStage(false);if(MV.live&&v!=='match'&&MV.m&&MV.m.phase!=='ft'){MV.pause()}view=v;$$('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));renderTop();const f={home:vHome,squad:vSquad,tactics:()=>TV.render($('#v-tactics')),training:vTraining,youth:vYouth,club:vClub,market:vMarket,online:()=>ON.render(),auction:vAuction,league:vLeague,match:MV.render}[v];f&&f();$('main').scrollTop=0;if(A.scene)A.scene(v==='tactics'?'tac':'menu');if(v==='match'&&A.ready&&A.preload)A.preload();
+/* histórico: Início é a base; qualquer outra tela fica uma camada acima, então o voltar do celular sempre leva ao Início */
+const HN={skip:0,on:0};
+function hnInit(){if(HN.on)return;HN.on=1;try{history.replaceState({v:'home',base:1},'')}catch(e){}
+  addEventListener('popstate',e=>{if(HN.skip){HN.skip--;return}const st=e.state||{};
+    if(!$('#modal').hidden){closeModal(1);if(st.base&&view!=='home')go('home',1);else if(st.v&&st.v!==view)go(st.v,1);return}
+    if($('.app').hidden)return;go(st.v&&!st.base?st.v:'home',1)})}
+function hnGo(v){if(!HN.on)return;const st=history.state||{};const d=st.d||0;try{
+  if(v==='home'){if(!st.base&&d>0){HN.skip++;history.go(-d)}}
+  else if(st.v==='player'&&v===st.from&&d>0){HN.skip++;history.back()}
+  else if(v==='player'){if(st.v==='player')history.replaceState({...st},'');else history.pushState({v,from:st.base?'home':st.v,d:d+1},'')}
+  else if(st.base)history.pushState({v,d:1},'');else history.replaceState({v,d},'')}catch(e){}}
+function go(v,fromPop){if(!fromPop)hnGo(v);document.body.dataset.view=v;if(v!=='auction'&&typeof auStage==='function')auStage(false);if(MV.live&&v!=='match'&&MV.m&&MV.m.phase!=='ft'){MV.pause()}view=v;$$('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));renderTop();const f={home:vHome,squad:vSquad,tactics:()=>TV.render($('#v-tactics')),training:vTraining,youth:vYouth,club:vClub,market:vMarket,online:()=>ON.render(),auction:vAuction,league:vLeague,match:MV.render,player:vPlayer}[v];f&&f();$('main').scrollTop=0;if(A.scene)A.scene(v==='tactics'?'tac':'menu');if(v==='match'&&A.ready&&A.preload)A.preload();
   if(v!=='match'&&A.ready){A.crowd(false);A.fadeMusic(1)}}
 
 /* ---------- início ---------- */
@@ -204,6 +215,13 @@ function vSquad(){
 
 /* ---------- jogador ---------- */
 function playerModal(pid){
+  const p0=P(pid);if(!p0)return;
+  if(view==='match')return playerCard(pid,'modal');
+  if(!$('#modal').hidden)closeModal();
+  if(view==='player'){const same=S.curPid===pid;const k=$('main').scrollTop;S.pagePid=pid;vPlayer();if(same)$('main').scrollTop=k;return}
+  S.pagePid=pid;go('player')}
+function vPlayer(){const pid=S.pagePid;if(!P(pid)){go('home');return}playerCard(pid,'page')}
+function playerCard(pid,mode){
   const p=P(pid);if(!p)return;const g=G();const mine=p.c===g.user;const c=p.c?clubOf(p.c):null;const o=C.ovr(p);
   const kit=c?c.kit:['#555','#999','#555','liso'];
   const lineIdx=g.tactic.lineup.indexOf(pid);const num=lineIdx>=0?(lineIdx===0?1:lineIdx+1):'';
@@ -211,7 +229,8 @@ function playerModal(pid){
   const fm=p.fm.length?p.fm.map(r=>rtTag(r)).join(' '):'<span class="dim">sem jogos</span>';
   const yOK=mine&&p.y;const nl=(S.navList||[]);const ni=nl.indexOf(pid);S.curPid=pid;
   const nav=ni>=0&&nl.length>1?`<div class="pnav"><button class="iconbtn" data-pnav="-1" title="Anterior (←)">‹</button><span class="dim num">${ni+1} / ${nl.length}</span><button class="iconbtn" data-pnav="1" title="Próximo (→)">›</button></div>`:'';
-  openModal(`${nav}<div class="row" style="gap:20px;align-items:center">${shirtSvg(kit,num||C.POS.indexOf(p.p)+1,110,surname(p.n))}<div style="flex:1">
+  const out=mode==='page'?(h=>{const st=history.state||{};const from=st.from&&st.from!=='player'?st.from:'squad';const lab={home:'Início',squad:'Plantel',tactics:'Tática',training:'Treino',youth:'Base',club:'Finanças',market:'Mercado',online:'Online',auction:'Leilão',league:'Liga'}[from]||'Voltar';$('#v-player').innerHTML=`<div class="pg-player"><div class="pp-top"><button class="btn ghost sm pp-back" data-go="${from}"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"/></svg> ${lab}</button>${nav}</div><div class="frame pp-body">${h}</div></div>`}):h=>openModal(nav+h);
+  out(`<div class="row" style="gap:20px;align-items:center">${shirtSvg(kit,num||C.POS.indexOf(p.p)+1,110,surname(p.n))}<div style="flex:1">
     <div class="eyebrow">${c?esc(c.name):'Sem clube'} · ${C.POS_NAME[p.p]}${p.y?' · Base':''}</div><h1 class="title" style="font-size:52px">${esc(p.n)}</h1>
     <div class="row wrap" style="margin-top:6px">${posTag(p.p)}<span class="chip">${p.a} anos</span><span class="chip">Valor ${money(C.valueOf(p))}</span><span class="chip">Salário ${money(p.w)}/jogo</span>${p.sty?`<span class="chip acc">${esc(p.sty)}</span>`:''}<span class="chip">Pé ${({D:'direito',E:'esquerdo',A:'ambidestro'})[p.pe]||'direito'}</span><span class="chip" title="Quanto o rendimento varia de um jogo para outro">Regularidade ${p.con>=15?'alta':p.con>=9?'média':'baixa'}</span>${p.inj?`<span class="chip bad">Lesionado: ${p.inj} jogo(s)</span>`:''}</div></div>
     <div style="text-align:center"><div class="num" style="font-size:72px;line-height:.9;font-weight:800">${o}</div><div class="dim" style="font-size:12px;letter-spacing:.1em">GERAL</div><div style="margin-top:6px">${potStars(p)}</div><div class="dim" style="font-size:12px">potencial ${mine||p.a<=23?p.pot:'?'}</div></div></div>
@@ -239,7 +258,7 @@ function playerModal(pid){
    <table class="ph-t"><thead><tr><th>Temporada</th><th>Clube</th><th>J</th><th>G</th><th>A</th><th>Nota</th><th>🚑</th></tr></thead><tbody>${rows.map(r=>`<tr class="${r.now?'now':''}"><td>${r.s}${r.now?' <small>atual</small>':''}</td><td><b>${esc(r.c)}</b></td><td>${r.j}</td><td><b>${r.g}</b></td><td>${r.as}</td><td>${r.n?rtTag(r.n):'<span class="dim">—</span>'}</td><td>${r.inj||'<span class="dim">0</span>'}</td></tr>`).join('')}</tbody></table>
    ${(p.log||[]).length?`<div class="ph-log">${p.log.slice(0,8).map(e=>`<div class="ph-ev ${e.t}"><span>${e.t==='inj'?'🚑':e.t==='transf'?'🔁':'•'}</span><b>${e.s}</b>${esc(e.txt)}</div>`).join('')}</div>`:''}</div>`})()}${mine&&!p.y?`<div class="boostrow"><span><b>⭐ Sessão especial</b><small>${p.boostS===g.season?'já feita nesta temporada':'+1 num atributo · '+money(C.playerBoostCost(p))}</small></span>${p.boostS===g.season?'':`<select id="boost-attr">${Object.keys(C.W[p.p]||{}).sort((a,b)=>(C.W[p.p][b]||0)-(C.W[p.p][a]||0)).map(k=>`<option value="${k}">${C.ATTR_LABEL[k]} (${Math.round(p.t[k])})</option>`).join('')}</select><button class="btn xs" data-boost="1" data-pid="${p.id}">Investir</button>`}</div>`:''}<div class="lookrow"><span class="dim">Visual no jogo 3D</span><div>${[['auto','Automático'],...[1,2,3,4,5,6].map(n=>[n,''])].map(([n,l])=>`<button class="lk ${(p.look||'auto')==n?'on':''}" data-look="${n}" data-pid="${p.id}" title="${l||'Visual '+n}" style="${n==='auto'?'':`background:${['#ae7d67','#644433','#664431','#a57a63','#835845','#563829'][n-1]}`}">${l||n}</button>`).join('')}</div></div>`);
 }
-function navPlayer(dir){const nl=S.navList||[];const i=nl.indexOf(S.curPid);if(i<0||!nl.length)return;const n=nl[(i+dir+nl.length)%nl.length];const fr=$('#modal>.frame');const k=fr?fr.scrollTop:0;playerModal(n);const f2=$('#modal>.frame');if(f2){f2.scrollTop=k;f2.style.animation='none';f2.offsetHeight;f2.style.animation=`slide${dir>0?'R':'L'} .22s ease`}}
+function navPlayer(dir){const nl=S.navList||[];const i=nl.indexOf(S.curPid);if(i<0||!nl.length)return;const n=nl[(i+dir+nl.length)%nl.length];const pg=view==='player'&&$('#modal').hidden;const fr=pg?$('main'):$('#modal>.frame');const k=fr?fr.scrollTop:0;playerModal(n);const f2=pg?$('#v-player .pp-body'):$('#modal>.frame');if(pg)$('main').scrollTop=k;else if(f2)f2.scrollTop=k;if(f2){f2.style.animation='none';f2.offsetHeight;f2.style.animation=`slide${dir>0?'R':'L'} .22s ease`}}
 function volPop(btn,kind){
   let el=$('#volpop');if(el&&el.dataset.k===kind){el.remove();return}if(el)el.remove();
   el=document.createElement('div');el.id='volpop';el.dataset.k=kind;
@@ -255,8 +274,8 @@ function volPop(btn,kind){
     A.set(i.dataset.vk,v)});
   setTimeout(()=>{const off=e=>{if(!el.isConnected){document.removeEventListener('pointerdown',off,true);return}if(!el.contains(e.target)&&e.target!==btn&&!btn.contains(e.target)){el.remove();document.removeEventListener('pointerdown',off,true)}};document.addEventListener('pointerdown',off,true)},0);
 }
-function openModal(html){const m=$('#modal');m.classList.remove('wide','fort-modal','cele-modal','recap-modal');m.innerHTML=`<div class="frame"><button class="iconbtn x" data-close>✕</button>${html}</div>`;m.hidden=false}
-function closeModal(){$('#modal').hidden=true;$('#modal').innerHTML='';$('#modal').classList.remove('wide','fort-modal','cele-modal')}
+function openModal(html){const m=$('#modal');if(HN.on&&m.hidden){const st=history.state||{};try{history.pushState({v:view,modal:1,from:st.from,d:(st.d||0)+1},'')}catch(e){}}m.classList.remove('wide','fort-modal','cele-modal','recap-modal');m.innerHTML=`<div class="frame"><button class="iconbtn x" data-close>✕</button>${html}</div>`;m.hidden=false}
+function closeModal(fromPop){if(fromPop!==1&&HN.on&&(history.state||{}).modal&&!$('#modal').hidden){HN.skip++;try{history.back()}catch(e){HN.skip--}}$('#modal').hidden=true;$('#modal').innerHTML='';$('#modal').classList.remove('wide','fort-modal','cele-modal')}
 
 /* ---------- treino ---------- */
 function keepScroll(f){const m=$('main'),y=m?m.scrollTop:0;f();if(m){m.scrollTop=y;requestAnimationFrame(()=>m.scrollTop=y)}}
@@ -462,10 +481,10 @@ function bind(){
       if(r.status==='accepted'){A.goal();toast(esc(r.msg));closeModal();rerender();return}
       const el=$('#of-res');if(el)el.innerHTML=`<div class="chip ${r.status==='rejected'?'bad':'warn'}" style="white-space:normal;padding:8px 12px">${esc(r.msg)}</div>${r.status==='counter'||r.status==='wage'?`<div style="margin-top:8px"><button class="btn sm" data-offerp="${pid}" data-amt="${r.ask}" data-wage="${Math.max(wage,r.minWage||0)}">Aceitar: ${money(r.ask)} + ${money(Math.max(wage,r.minWage||0))}/jogo</button></div>`:''}`;return}
     if(d.talk){const r=C.talk(+d.pid,d.talk);toast(esc(r));playerModal(+d.pid);return}
-    if(d.sell){const v=+$('#reserve').value||0;C.listForSale(+d.sell,v);toast(`${esc(P(+d.sell).n)} vai a leilão (mínimo ${money(v)}).`);closeModal();rerender();return}
-    if(d.promote){C.promote(+d.promote);toast('Promovido ao profissional.');closeModal();rerender();return}
-    if(d.demote){C.demote(+d.demote);toast('Voltou para a base.');closeModal();rerender();return}
-    if(d.release){const p=P(+d.release);if(!confirm(`Dispensar ${p.n}?${p.y?'':' Multa: '+money(p.w*4)}`))return;C.release(+d.release);toast('Jogador dispensado.');closeModal();rerender();return}
+    if(d.sell){const v=+$('#reserve').value||0;C.listForSale(+d.sell,v);toast(`${esc(P(+d.sell).n)} vai a leilão (mínimo ${money(v)}).`);closeModal();leaveP();return}
+    if(d.promote){C.promote(+d.promote);toast('Promovido ao profissional.');closeModal();leaveP();return}
+    if(d.demote){C.demote(+d.demote);toast('Voltou para a base.');closeModal();leaveP();return}
+    if(d.release){const p=P(+d.release);if(!confirm(`Dispensar ${p.n}?${p.y?'':' Multa: '+money(p.w*4)}`))return;C.release(+d.release);toast('Jogador dispensado.');closeModal();leaveP();return}
     if(d.player){if(e.target.closest('[data-msg]'))e.stopPropagation();playerModal(+d.player);return}
     if(d.offer){const r=C.answerOffer(d.offer,d.acc==='1');toast((r&&r.ok?'✅ ':'↩️ ')+esc(r?r.txt:'Respondido.'));if(r&&r.ok)A.applause&&A.applause(1.5,.3);rerender();return}
     if(d.msg){const m=G().inbox.find(x=>x.id==+d.msg);if(m&&!m.read){m.read=true;C.save();t.classList.remove('unread');renderTop()}return}
@@ -504,11 +523,13 @@ function bind(){
   document.addEventListener('change',e=>{if(/^mk-/.test(e.target.id||''))mkLive()});
   document.addEventListener('change',err(e=>{const t=e.target;if(t.dataset.ytr){P(+t.dataset.ytr).tr=t.value;C.save();toast('Treino individual ajustado.')}}));
   $('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+  {let px=null;const vp=$('#v-player');vp.addEventListener('touchstart',e=>{px=e.touches[0].clientX;vp._py=e.touches[0].clientY},{passive:true});vp.addEventListener('touchend',e=>{if(px==null||!vp.querySelector('[data-pnav]'))return;const dx=e.changedTouches[0].clientX-px,dy=e.changedTouches[0].clientY-vp._py;if(Math.abs(dx)>70&&Math.abs(dx)>Math.abs(dy)*1.6&&!e.target.closest('input,select,.ph-t,table'))navPlayer(dx<0?1:-1);px=null},{passive:true})}
   let tx=null;$('#modal').addEventListener('touchstart',e=>{tx=e.touches[0].clientX},{passive:true});$('#modal').addEventListener('touchend',e=>{if(tx==null||!$('#modal [data-pnav]'))return;const dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>60)navPlayer(dx<0?1:-1);tx=null},{passive:true});
   window.addEventListener('resize',()=>{if(view==='match')MV.resize();if(view==='tactics')TV.render()});
-  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();if(!$('#modal').hidden&&$('#modal [data-pnav]')&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){if(e.key==='ArrowRight'){e.preventDefault();navPlayer(1)}if(e.key==='ArrowLeft'){e.preventDefault();navPlayer(-1)}}if(view==='match'&&e.code==='Space'&&!/INPUT|SELECT/.test(document.activeElement.tagName)){e.preventDefault();MV.toggle()}});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();if((!$('#modal').hidden&&$('#modal [data-pnav]')||$('#modal').hidden&&view==='player')&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){if(e.key==='ArrowRight'){e.preventDefault();navPlayer(1)}if(e.key==='ArrowLeft'){e.preventDefault();navPlayer(-1)}}if(view==='match'&&e.code==='Space'&&!/INPUT|SELECT/.test(document.activeElement.tagName)){e.preventDefault();MV.toggle()}});
 }
 function rerender(){renderTop();go(view)}
+function leaveP(){if(view==='player'){const st=history.state||{};go(st.from&&st.from!=='player'?st.from:'squad')}else rerender()}
 function uiQueue(){const g=G();if(!$('#modal').hidden)return;
   if(g.celeQ&&g.celeQ.length){const c=g.celeQ.shift();C.save();celebrateScreen(c);return true}
   if(g.lastSummary){seasonModal();return true}/* resumo da temporada pendente: abre assim que der */
@@ -695,7 +716,7 @@ function startScreen(){
   (async()=>{try{if(C.hasSave()&&C.load()&&C.G.cid){const have=await CAR.get(C.G.cid);if(!have)await CAR.put(C.G)}}catch(e){}st.loc=await CAR.list();draw()})();
 }
 A.onTrack=n=>{if(A.S.music&&view!=='match')toast('♪ '+esc(n))};
-function launch(){$('#start').hidden=true;$('.app').hidden=false;C.validateLineup();theme(C.userClub());A.init();setTimeout(()=>A.gate&&A.gate(),150);A.music(A.S.music);go('home');if(G().jobOffers)jobsModal();else{try{const s=JSON.parse(localStorage.getItem('c11-live')||'null');if(s&&s.cid===G().cid&&s.season===G().season&&s.date===G().date&&s.user===G().user)go('match')}catch(e){}}}
+function launch(){$('#start').hidden=true;$('.app').hidden=false;C.validateLineup();theme(C.userClub());A.init();setTimeout(()=>A.gate&&A.gate(),150);A.music(A.S.music);hnInit();go('home');if(G().jobOffers)jobsModal();else{try{const s=JSON.parse(localStorage.getItem('c11-live')||'null');if(s&&s.cid===G().cid&&s.season===G().season&&s.date===G().date&&s.user===G().user)go('match')}catch(e){}}}
 /* ---------- instalar app (PWA) ---------- */
 let deferredInstall=null;const standalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone;
 window.FUTBOL_INSTALL=!standalone();
