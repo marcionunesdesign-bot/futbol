@@ -784,7 +784,8 @@ class Match{
     const u=this.opts.userSide??0;
     for(const T of this.T)for(const m of [...T.mps,...T.out]){if(T.side!==u)continue;const mins=Math.round(((m.minOut??this.t)-m.min0)/this.matchSec*90);ratings[m.id]=+m.r.toFixed(1);minutes[m.id]=Math.max(1,mins);fit[m.id]=Math.round(m.stam);if(m.injured)injuries.push({pid:m.id,rounds:1+Math.floor(R()*4)})}
     for(const e of this.events)if(e.type==='goal'){if(e.side===u){scorers.push(e.pid);if(e.assist)assists.push(e.assist)}else oppScorers.push(e.pid)}
-    return {home:H.club.id,away:A.club.id,hg:H.score,ag:A.score,ratings,minutes,fit,scorers,assists,injuries,oppScorers};
+    const tl=this.events.filter(e=>e.type==='goal'||e.type==='red'||e.type==='inj').map(e=>({m:Math.max(1,Math.min(90,e.min|0)),k:e.type==='goal'?'g':e.type==='red'?'r':'i',s:e.side,pid:e.pid}));
+    return {home:H.club.id,away:A.club.id,hg:H.score,ag:A.score,ratings,minutes,fit,scorers,assists,injuries,oppScorers,tl};
   }
   runToEnd(maxSteps=1e6){const dt=1/30;let n=0;while(this.phase!=='ft'&&n<maxSteps){if(this.phase==='ht')this.resumeFromHT();this.step(dt);n++}return this}
   snapshot(){const a=[];this._f=this.flip;for(const T of this.T)for(const m of T.mps)a.push(m.off?null:[m.x,m.y,m.ph,m.fs??m.face]);return {t:this.t,b:[this.ball.x,this.ball.y,this.ball.z],p:a,own:this.ball.own?this.ball.own.id:null,sc:[this.T[0].score,this.T[1].score]}}

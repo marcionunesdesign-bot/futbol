@@ -414,12 +414,32 @@ function quickResult(h,a,neutral){
   const lh=1.3*Math.exp((sh-sa)*.055)+(neutral?0:.22),la=1.08*Math.exp((sa-sh)*.055);
   return [poisson(lh),poisson(la)];
 }
-function creditScorers(clubId,goals){
+function pickScorers(clubId,goals){/* só escolhe quem marcou (sem contar ainda) */
+  const c=G.clubs[clubId];const ps=c.players.map(i=>G.players[i]).filter(p=>p&&!p.inj&&!p.y);if(!ps.length)return [];
+  const wG={ATA:6,PD:3.4,PE:3.4,MEI:2.6,MC:1.3,VOL:.6,LD:.4,LE:.4,ZAG:.5,GOL:0};
+  const draw=()=>{let tot=0;const arr=ps.map(p=>{const x=(wG[p.p]||0)*Math.pow(p.t.fin/10,2)*(ovr(p)>c.level-4?1.6:.5);tot+=x;return x});let r=R()*tot;for(let i=0;i<ps.length;i++){r-=arr[i];if(r<=0)return ps[i]}return ps[0]};
+  const out=[];for(let i=0;i<goals;i++)out.push(draw().id);return out}
+/* um jogo dos outros clubes, com minuto de cada gol, expulsões e lesões */
+function simOne(h,a,neutral){const [gh,ga]=quickResult(h,a,neutral);const sh=pickScorers(h,gh),sa=pickScorers(a,ga);const tl=[];
+  const used=new Set();const minute=()=>{let m;do{m=rint(1,90)}while(used.has(m));used.add(m);return m};
+  sh.forEach(pid=>tl.push({m:minute(),k:'g',s:0,pid}));sa.forEach(pid=>tl.push({m:minute(),k:'g',s:1,pid}));
+  [[h,0],[a,1]].forEach(([id,s])=>{const ps=G.clubs[id].players.map(i=>G.players[i]).filter(p=>p&&!p.inj&&!p.y).sort((x,y)=>ovr(y)-ovr(x)).slice(0,11);if(!ps.length)return;
+    if(R()<.08){const p=ps[rint(1,ps.length-1)]||ps[0];tl.push({m:rint(25,89),k:'r',s,pid:p.id})}
+    if(R()<.07){const p=ps[rint(0,ps.length-1)];tl.push({m:rint(5,88),k:'i',s,pid:p.id,inj:rint(1,3)})}});
+  tl.sort((x,y)=>x.m-y.m);const pens=neutral&&gh===ga?penalties(h,a):null;return {h,a,gh,ga,sh,sa,tl,pens}}
+/* a rodada inteira é calculada uma vez por data: a tela da rodada mostra exatamente o que vai valer */
+function roundPreview(){const di=dateInfo();if(!di)return null;const key=G.season+'-'+G.date;if(G.rp&&G.rp.key===key)return G.rp;const u=G.user;const rp={key,kind:di.kind,games:{}};
+  if(di.kind==='L'){for(const d of DIVS)rp.games[d]=G.fixtures[d][di.leagueRound].filter(([h,a])=>h!==u&&a!==u).map(([h,a])=>simOne(h,a,false))}
+  else{ensureCupDraw();rp.games.C=G.cup.ties.filter(([h,a])=>h!==u&&a!==u).map(([h,a])=>simOne(h,a,true))}
+  G.rp=rp;return rp}
+function rpGet(h,a){const rp=roundPreview();for(const k in rp.games){const g=rp.games[k].find(x=>x.h===h&&x.a===a);if(g)return g}return simOne(h,a,rp.kind!=='L')}
+function rpApply(g){/* lesões dos outros jogos valem de verdade */for(const e of g.tl)if(e.k==='i'){const p=G.players[e.pid];if(p&&!p.inj&&p.c!==G.user){p.inj=e.inj;p.st.inj=(p.st.inj||0)+1}}}
+function creditScorers(clubId,goals,ids){
   const c=G.clubs[clubId];const ps=c.players.map(i=>G.players[i]).filter(p=>p&&!p.inj&&!p.y);
   const wG={ATA:6,PD:3.4,PE:3.4,MEI:2.6,MC:1.3,VOL:.6,LD:.4,LE:.4,ZAG:.5,GOL:0};
   const wA={MEI:4,PD:3,PE:3,MC:2.5,ATA:2,LD:1.4,LE:1.4,VOL:1,ZAG:.3,GOL:.1};
   const draw=(w,f)=>{let tot=0;const arr=ps.map(p=>{const x=(w[p.p]||0)*Math.pow(p.t[f]/10,2)*(ovr(p)>c.level-4?1.6:.5);tot+=x;return x});let r=R()*tot;for(let i=0;i<ps.length;i++){r-=arr[i];if(r<=0)return ps[i]}return ps[0]};
-  const out=[];for(let i=0;i<goals;i++){const s=draw(wG,'fin');s.st.g++;out.push(s.id);if(R()<.7){const as=draw(wA,'pas');if(as!==s)as.st.as++}}
+  const out=[];for(let i=0;i<goals;i++){const s=ids&&G.players[ids[i]]?G.players[ids[i]]:draw(wG,'fin');if(!s)continue;s.st.g++;out.push(s.id);if(R()<.7){const as=draw(wA,'pas');if(as&&as!==s)as.st.as++}}
   // jogos e nota para quem joga
   ps.sort((a,b)=>ovr(b)-ovr(a)).slice(0,13).forEach(p=>{p.st.j++;const nt=+(6.4+gauss()*.55+(goals>1?.2:0)).toFixed(1);p.st.ns=(p.st.ns||0)+nt;p.st.nn=(p.st.nn||0)+1;p.fm.push(nt);if(p.fm.length>5)p.fm.shift()});
   return out;
@@ -440,14 +460,14 @@ function finishDate(userRes){
   if(di.kind==='L'){
     for(const d of DIVS){const res=[];
       for(const [h,a] of G.fixtures[d][di.leagueRound]){let gh,ga;
-        if(h===u||a===u){gh=userRes.hg;ga=userRes.ag}else{[gh,ga]=quickResult(h,a);creditScorers(h,gh);creditScorers(a,ga)}
-        applyTable(d,h,a,gh,ga);res.push({h,a,gh,ga})}
+        let tl=null;if(h===u||a===u){gh=userRes.hg;ga=userRes.ag;tl=userRes.tl||null}else{const g=rpGet(h,a);gh=g.gh;ga=g.ga;tl=g.tl;creditScorers(h,gh,g.sh);creditScorers(a,ga,g.sa);rpApply(g)}
+        applyTable(d,h,a,gh,ga);res.push({h,a,gh,ga,tl})}
       G.results[d][di.leagueRound]=res}
   } else {
     const ties=G.cup.ties,res=[];
     for(const [h,a] of ties){let gh,ga,pens=null;
       if(h===u||a===u){gh=userRes.hg;ga=userRes.ag;pens=userRes.pens||null;if(gh===ga&&!pens)pens=penalties(h,a)}
-      else{[gh,ga]=quickResult(h,a,true);creditScorers(h,gh);creditScorers(a,ga);if(gh===ga)pens=penalties(h,a)}
+      else{const g=rpGet(h,a);gh=g.gh;ga=g.ga;creditScorers(h,gh,g.sh);creditScorers(a,ga,g.sa);rpApply(g);pens=g.pens||(gh===ga?penalties(h,a):null)}
       const w=gh>ga||(pens&&pens[0]>pens[1])?h:a,l=w===h?a:h;G.cup.out[l]=CUP_NAMES[G.cup.round];res.push({h,a,gh,ga,pens,w})}
     G.cup.results=G.cup.results||[];G.cup.results[G.cup.round]=res;
     G.cup.alive=res.map(r=>r.w);G.cup.ties=[];G.cup.round++;
@@ -462,7 +482,7 @@ function finishDate(userRes){
   weeklyMoney(bye?null:um);
   if(G.trainPending){G.fam=clamp(G.fam-3,0,100);if(!bye)msg('Time foi a campo sem treinar','Não houve treino antes deste jogo: o entrosamento caiu e o time rendeu menos. Faça o treino da semana na aba Treino antes de cada partida.')}
   postMatchRecover(userRes);G.lastMinutes=userRes?userRes.minutes:{};G.trainPending=true;G.trainLog=null;
-  aiMaintenance();
+  G.rp=null;aiMaintenance();
   if(G.autoTrain)try{autoTrainNow()}catch(e){}
   if(!bye)boardUpdate(userRes,um);
   if(!bye)try{rollFortune(userRes)}catch(e){console.error(e)}
@@ -555,16 +575,22 @@ function trainAndRecover(r){
     }
     const dd={};for(const k of ATTR){const x=+(p.t[k]-before[k]).toFixed(2);if(Math.abs(x)>=.01)dd[k]=x}
     log.rows.push({id,st,d:dd,fi:[Math.round(fi0),Math.round(p.fi)],ovr:[Math.round(o0),Math.round(ovrFor(p.t,p.p))],tf:p.tf||null});
+    {if(!p.ev||p.ev.s!==G.season)p.ev={s:G.season,o0:Math.round(o0),pts:0,ses:0,last:[]};const gain=Object.values(dd).reduce((a,v)=>a+Math.max(0,v),0);if(st==='treino'||st==='individual'){p.ev.ses++;p.ev.pts=+(p.ev.pts+gain).toFixed(2)}p.ev.last=[...(p.ev.last||[]),+gain.toFixed(2)].slice(-5)}
     p.v=valueOf(p);
   }
   G.trainLog=log;
+  {const rs=log.rows,tr=rs.filter(r=>r.st==='treino'||r.st==='individual');const pts=rs.reduce((a,r)=>a+Object.values(r.d).reduce((x,v)=>x+Math.max(0,v),0),0);const av=k=>Math.round(rs.filter(r=>r.st!=='lesionado').reduce((a,r)=>a+r.fi[k],0)/Math.max(1,rs.filter(r=>r.st!=='lesionado').length));
+   (G.trainHist=G.trainHist||[]).push({d:G.date,s:G.season,f:log.focus,i:int,n:tr.length,ev:rs.filter(r=>Object.values(r.d).some(v=>v>0)).length,up:rs.filter(r=>r.ovr[1]>r.ovr[0]).length,pts:+pts.toFixed(1),fi:[av(0),av(1)],inj:rs.filter(r=>r.st==='lesionou').length,rest:rs.filter(r=>r.st==='poupado').length});G.trainHist=G.trainHist.slice(-12)}
 }
 // descanso natural depois do jogo (sem evolução: evolução só vem do treino feito pelo técnico)
 function postMatchRecover(r){const c=userClub();
   const md=facLvl('med');for(const id of c.players){const p=G.players[id];if(!p)continue;if(p.inj){p.inj=Math.max(0,p.inj-(md>=3&&p.inj>1?2:1));p.fi=clamp(p.fi+8+(md-1)*2,30,100)}else p.fi=clamp(p.fi+6+p.t.res*.2+(md-1)*2,30,100)}
   const af=1+G.academy.lvl*.1;const ylog=[];
-  for(const id of c.youth||[]){const p=G.players[id];if(!p)continue;const o0=ovr(p),t0={...p.t};const d=devDelta(p,1.05*af*(p.fm.length?1.25:1));grow(p,d,YTRAIN[p.tr]);p.v=valueOf(p);let gain=0;for(const k in p.t)gain+=p.t[k]-(t0[k]||0);ylog.push({id,tr:p.tr||'equilibrado',o:[o0,ovr(p)],g:+gain.toFixed(2)})}
+  for(const id of c.youth||[]){const p=G.players[id];if(!p)continue;const o0=ovr(p),t0={...p.t};const d=devDelta(p,1.05*af*(p.fm.length?1.25:1));grow(p,d,YTRAIN[p.tr]);p.v=valueOf(p);let gain=0,top=null;for(const k in p.t){const x=p.t[k]-(t0[k]||0);gain+=x;if(x>0&&(!top||x>top[1]))top=[k,+x.toFixed(2)]}
+    if(!p.ev||p.ev.s!==G.season)p.ev={s:G.season,o0:Math.round(o0),pts:0,ses:0,last:[]};p.ev.ses++;p.ev.pts=+(p.ev.pts+Math.max(0,gain)).toFixed(2);p.ev.last=[...(p.ev.last||[]),+Math.max(0,gain).toFixed(2)].slice(-5);
+    ylog.push({id,tr:p.tr||'equilibrado',o:[o0,ovr(p)],g:+gain.toFixed(2),top})}
   G.youthLog={date:G.date,season:G.season,af,rows:ylog};
+  if(ylog.length){(G.youthHist=G.youthHist||[]).push({d:G.date,s:G.season,n:ylog.length,pts:+ylog.reduce((a,r)=>a+Math.max(0,r.g),0).toFixed(1),up:ylog.filter(r=>r.o[1]>r.o[0]).length});G.youthHist=G.youthHist.slice(-12)}
   if(G.academy.scoutCd>0)G.academy.scoutCd--;}
 function runTraining(){if(!G.trainPending)throw new Error('O treino desta semana já foi feito. O próximo abre depois do jogo.');
   trainAndRecover({minutes:G.lastMinutes||{}});
@@ -900,7 +926,7 @@ function plog(p,t,txt){if(!p)return;p.log=p.log||[];p.log.unshift({s:G.season,d:
 function msg(title,body,extra={}){G.inbox.unshift({id:G.uid++,date:G.date,season:G.season,title,body,read:false,...extra});G.inbox=G.inbox.slice(0,80)}
 
 return {autoTrainNow,setAutoTrain,newerSave,progressOf,current,get G(){return G},set G(v){G=v},set onSave(f){onSave=f},loadObj(o){G=o;afterLoad();try{localStorage.setItem(KEY,JSON.stringify(G))}catch(e){}},D,R,rnd,rint,pick,clamp,gauss,shuffle,DIVS,ATTR,ATTR_LABEL,ATTR_GROUPS,W,POS,STYLES,migratePlayer,setIndividual,setRest,setBonus,bonusBoost,POS_NAME,GROUP,ovr,ovrFor,posFactor,ratingIn,FN,fnGroup,fnOf,
-  FORMATIONS,buildSlots,valueOf,wageOf,formAvg,genPlayer,newGame,fixRosters,takeOver,save,load,hasSave,wipe,exportSave,importSave,userClub,bestLineup,autoLineup,validateLineup,setFormation,
+  FORMATIONS,buildSlots,valueOf,wageOf,formAvg,genPlayer,newGame,fixRosters,roundPreview,takeOver,save,load,hasSave,wipe,exportSave,importSave,userClub,bestLineup,autoLineup,validateLineup,setFormation,
   teamStrength,coachOf,aiTeam,userTeam,runTraining,trainAdvice,syncRosters,teamTalk,dateInfo,nextUserMatch,ensureCupDraw,finishDate,sortedTable,penalties,money,payroll,TRAIN,YTRAIN,scout,scoutCost,upgradeAcademy,academyCost,promote,demote,release,
   talk,moodText,relText,startSeason,expandLeagues,newAuction,makeOffer,askPrice,searchPlayers,listForSale,closeLot,answerOffer,acceptJob,declineJobs,CAL,CUP_NAMES,CUP_RULE,FAC,facLvl,facCost,buyFac,ACTS,doAct,playerBoostCost,boostPlayer,prizeTable,DIV_PRIZE,trophies,resolveFortune,FORT,divName,DIV_TV,msg,quickResult,valueOfNow:valueOf};
 })();
