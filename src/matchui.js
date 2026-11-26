@@ -461,20 +461,20 @@ const RD_IC={g:'M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10
   r:'M7,3H17A2,2 0 0,1 19,5V19A2,2 0 0,1 17,21H7A2,2 0 0,1 5,19V5A2,2 0 0,1 7,3Z',i:'M10,3H14V10H21V14H14V21H10V14H3V10H10V3Z'};
 const rdI=k=>`<svg class="rd-i ${k}" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="${RD_IC[k]}"/></svg>`;
 function rdLum(c){const h=String(c||'#000').replace('#','');if(h.length<6)return .5;const v=[0,2,4].map(i=>parseInt(h.slice(i,i+2),16)/255);return .2126*v[0]+.7152*v[1]+.0722*v[2]}
-function rdPill(id){const c=G().clubs[id];const k=c.kit||['#333','#fff'];let bg=k[0],fg=k[1];if(Math.abs(rdLum(bg)-rdLum(fg))<.32)fg=rdLum(bg)>.5?'#111':'#fff';return `<span class="rd-tm" style="background:${bg};color:${fg};${rdLum(bg)<.06?'box-shadow:inset 0 0 0 1px #ffffff2e':''}">${esc(c.short||c.name)}</span>`}
+function rdPill(id){const c=G().clubs[id];const k=c.kit||['#333','#fff'];return `<span class="rd-tm"><i style="background:linear-gradient(90deg,${k[0]} 50%,${k[1]} 50%)"></i>${esc(c.short||c.name)}</span>`}
 function roundShow(ur,done){
   const g=G();let rp;try{rp=C.roundPreview()}catch(e){console.error(e);done();return}
   const uc=C.userClub();const me={h:ur.home,a:ur.away,gh:ur.hg,ga:ur.ag,tl:(ur.tl||[]).slice().sort((x,y)=>x.m-y.m),me:1,pens:ur.pens||null};
   const groups=[];
-  if(rp.kind==='L'){[uc.div,...C.DIVS.filter(d=>d!==uc.div)].forEach(d=>{const L=(rp.games[d]||[]).slice();if(d===uc.div)L.unshift(me);groups.push({t:'Série '+d,L})})}
+  if(rp.kind==='L'){[uc.div].forEach(d=>{/* só a divisão do seu time: tela limpa */const L=(rp.games[d]||[]).slice();if(d===uc.div)L.unshift(me);groups.push({t:'Série '+d,L})})}
   else groups.push({t:'Taça Nacional',L:[me,...(rp.games.C||[])]});
   const all=groups.flatMap(x=>x.L);const um=st.um||{};
   const ov=document.createElement('div');ov.className='rd';ov.innerHTML=`<div class="rd-in">
     <div class="rd-top"><div><div class="rd-eye">Resultado rápido</div><div class="rd-tt">${esc(um.label||'Rodada')}</div></div>
       <div class="rd-clk"><b id="rd-m">0'</b><span id="rd-s">1º tempo</span><i><s id="rd-p"></s></i></div>
       <div class="rd-ctl"><button class="rd-b" id="rd-x2">2x</button><button class="rd-b" id="rd-skip">Pular</button></div></div>
-    <div class="rd-body">${groups.map((gr,gi)=>`<section class="rd-g"><h3>${gr.t}</h3>${gr.L.map((x,i)=>`<div class="rd-row ${x.me?'me':''}" data-k="${gi}-${i}">${rdPill(x.h)}<b class="rd-sc" data-s="0">0</b><b class="rd-sc" data-s="1">0</b>${rdPill(x.a)}<span class="rd-ev"></span></div>`).join('')}</section>`).join('')}</div>
-    <div class="rd-end" id="rd-end" hidden><button class="btn big go" id="rd-go">Ver meu jogo ›</button></div></div>`;
+    <div class="rd-body">${groups.map((gr,gi)=>`<section class="rd-g">${groups.length>1?`<h3>${gr.t}</h3>`:''}${gr.L.map((x,i)=>`<div class="rd-row ${x.me?'me':''}" data-k="${gi}-${i}"><div class="rd-side rd-home">${rdPill(x.h)}<div class="rd-evs" data-e="0"></div></div><div class="rd-score"><b class="rd-sc" data-s="0">0</b><span>×</span><b class="rd-sc" data-s="1">0</b></div><div class="rd-side rd-away">${rdPill(x.a)}<div class="rd-evs" data-e="1"></div></div></div>`).join('')}</section>`).join('')}</div>
+    <div class="rd-end" id="rd-end" hidden><button class="ns-btn pri" id="rd-go">Ver meu jogo ›</button></div></div>`;
   document.body.appendChild(ov);
   const rows=groups.flatMap((gr,gi)=>gr.L.map((x,i)=>({x,el:ov.querySelector(`[data-k="${gi}-${i}"]`),k:0,sc:[0,0]})));
   const nm=pid=>{const p=G().players[pid];if(!p)return '';const w=p.n.split(' ');return w.length>1&&w[w.length-1].length>2?w[w.length-1]:p.n};
@@ -483,8 +483,8 @@ function roundShow(ur,done){
   const show=()=>{const m=Math.min(90,Math.floor(t));$('#rd-m').textContent=(t>=90?90:m)+"'";$('#rd-s').textContent=t>=90?'Fim de jogo':htWait>0?'Intervalo':t>=45?'2º tempo':'1º tempo';$('#rd-p').style.width=Math.min(100,t/90*100)+'%';
     for(const r of rows){while(r.k<r.x.tl.length&&r.x.tl[r.k].m<=t){const e=r.x.tl[r.k++];
         if(e.k==='g'){r.sc[e.s]++;r.el.querySelector(`[data-s="${e.s}"]`).textContent=r.sc[e.s];r.el.classList.remove('flash');void r.el.offsetWidth;r.el.classList.add('flash');if(r.x.me){const ours=e.s===st.us;try{A.goal&&A.goal(ours)}catch(_){}}}
-        const lab={g:'',r:' expulso',i:' lesionado'}[e.k];r.el.querySelector('.rd-ev').innerHTML=`${rdI(e.k)}<span>${esc(nm(e.pid))}${lab} ${e.m}'</span>`;r.el.querySelector('.rd-ev').className='rd-ev on '+e.k}}};
-  const end=()=>{if(ended)return;ended=true;t=90;show();for(const r of rows){if(r.x.pens){r.el.querySelector('.rd-ev').innerHTML=`<span>pênaltis ${r.x.pens[0]}×${r.x.pens[1]}</span>`;r.el.querySelector('.rd-ev').className='rd-ev on'}
+        const box=r.el.querySelector(`[data-e="${e.s}"]`);const it=document.createElement('span');it.className='rd-e '+e.k;it.innerHTML=`${rdI(e.k)}${esc(nm(e.pid))} ${e.m}'`;box.appendChild(it)}}};
+  const end=()=>{if(ended)return;ended=true;t=90;show();for(const r of rows){if(r.x.pens){const sc=r.el.querySelector('.rd-score');sc.insertAdjacentHTML('beforeend',`<small>pên. ${r.x.pens[0]}×${r.x.pens[1]}</small>`)}
       if(r.sc[0]===r.sc[1])r.el.classList.add('dr')}try{A.whistle&&A.whistle(3,true)}catch(_){}$('#rd-end').hidden=false;$('#rd-skip').hidden=true;$('#rd-x2').hidden=true};
   const frame=now=>{const dt=Math.min(.1,(now-last)/1000);last=now;
     if(htWait>0){htWait-=dt;if(htWait<=0)try{A.whistle&&A.whistle(1)}catch(_){}}

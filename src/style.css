@@ -1541,3 +1541,21 @@ a,button,label,select,summary,[role=button],[data-go],[data-player]{touch-action
 .ns-bg img{opacity:.85}
 .ns-bg::before{background:linear-gradient(90deg,#07090aee 0%,#07090ac4 40%,#07090a77 70%,#07090ab0 100%),linear-gradient(180deg,#07090a99,transparent 30%,transparent 60%,#07090a 100%)}
 @media (max-width:760px){.ns-bg::before{background:linear-gradient(180deg,#07090ad9,#07090aa6 40%,#07090ac4 70%,#07090a)}}
+/* resultado rápido limpo: lances embaixo de cada time */
+.rd-in{width:min(820px,100%)}
+.rd-row{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;align-items:start;gap:14px;padding:12px 12px;border-radius:14px;border-bottom:1px solid #ffffff0d}
+.rd-row.me{background:#e1061c14;box-shadow:inset 0 0 0 1px #e1061c55}
+.rd-side{display:flex;flex-direction:column;gap:5px;min-width:0}.rd-home{align-items:flex-end;text-align:right}.rd-away{align-items:flex-start}
+.rd-tm{background:none!important;padding:0!important;color:#f1f3f5!important;font:800 19px/1.1 "Barlow Condensed",sans-serif!important;display:inline-flex!important;align-items:center;gap:8px;max-width:100%;box-shadow:none!important}
+.rd-home .rd-tm{flex-direction:row-reverse}
+.rd-tm i{width:14px;height:14px;border-radius:4px;flex:none;box-shadow:0 0 0 1px #ffffff30}
+.rd-score{display:flex;flex-direction:column;align-items:center;min-width:76px}.rd-score{flex-direction:row;flex-wrap:wrap;justify-content:center;gap:6px}
+.rd-score>span{color:#5d646b;font-weight:700;align-self:center}.rd-score small{flex-basis:100%;text-align:center;color:#9aa1a9;font-size:11.5px}
+.rd-sc{font-size:28px;color:#fff;min-width:22px}.rd-row.flash .rd-sc{color:#ffd23f}
+.rd-evs{display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:#aab0b6}.rd-home .rd-evs{align-items:flex-end}
+.rd-e{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;animation:rdin .3s ease}.rd-home .rd-e{flex-direction:row-reverse}
+.rd-e.g{color:#e9ecef}.rd-e .rd-i{width:13px;height:13px}
+.rd-ev{display:none!important}
+@media (max-width:640px){.rd-row{gap:8px;padding:10px 6px}.rd-tm{font-size:16px!important}.rd-score{min-width:62px}.rd-sc{font-size:24px}.rd-evs{font-size:11.5px}}
+
+.rd-end .ns-btn{width:min(420px,100%);height:56px}
