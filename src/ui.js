@@ -719,7 +719,7 @@ const NS_IC={back:'M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5
 const nsI=(k,s=20)=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" aria-hidden="true"><path fill="currentColor" d="${NS_IC[k]}"/></svg>`;
 const NS_DIV={D:['Série D','Recomendado','Comece de baixo, com pouco caixa, e suba divisão por divisão.'],C:['Série C','Desafio','Clubes tradicionais tentando voltar. Caixa curto.'],B:['Série B','Pressão','A torcida cobra o acesso desde a primeira rodada.'],A:['Série A','Elite','Mais dinheiro, elenco forte e cobrança por título.']};
 function startScreen(){
-  const st={step:C.hasSave()?'home':'div',div:null,club:null,name:'',slot:null,loc:null};
+  const st={step:'home',div:null,club:null,name:'',slot:null,loc:null};
   const el=$('#start');el.hidden=false;$('.app').hidden=true;
   const fake=n=>({name:n,short:C.D.short[n]||n,kit:C.D.kits[n]||['#2b6cb0','#fff','#2b6cb0','liso']});
   const acc=n=>{const k=fake(n).kit;for(const c of k){const [r,g,b]=hex(c);if(Math.max(r,g,b)-Math.min(r,g,b)>90)return c}return '#d8dde2'};
@@ -727,22 +727,23 @@ function startScreen(){
   const when=t=>{if(!t)return '';const d=new Date(t);const hoje=new Date();return d.toDateString()===hoje.toDateString()?'hoje':d.toLocaleDateString('pt-BR')};
   const row=(m,act,del,tag)=>`<div class="ns-row">${m.kit?shirtSvg(m.kit,null,40):''}<div class="ns-row-t"><b>${esc(m.club||'?')}</b><small>Série ${esc(m.div||'?')} · ${m.season||''}${m.manager?' · '+esc(m.manager):''}${tag?` · ${tag}`:''}</small></div>${act}${del}</div>`;
   const hasCar=()=>!!((st.loc&&st.loc.length)||C.hasSave()||(ACC.st.user&&ACC.st.careers.length));
-  const head=(n,title,sub)=>`<div class="ns-head">${st.step==='div'&&!hasCar()?`<a class="ns-back" href="conheca/" aria-label="Voltar">${nsI('back')}</a>`:`<button class="ns-back" data-ns="${st.step==='div'?'home':st.step==='club'?'div':'club'}" aria-label="Voltar">${nsI('back')}</button>`}<div class="ns-steps">${[1,2,3].map(k=>`<i class="${k<=n?'on':''}"></i>`).join('')}</div></div><span class="ns-eye">Passo ${n} de 3</span><h1 class="ns-title">${title}</h1>${sub?`<p class="ns-sub">${sub}</p>`:''}`;
+  const head=(n,title,sub)=>`<div class="ns-head">${false?``:`<button class="ns-back" data-ns="${st.step==='div'?'home':st.step==='club'?'div':'club'}" aria-label="Voltar">${nsI('back')}</button>`}<div class="ns-steps">${[1,2,3].map(k=>`<i class="${k<=n?'on':''}"></i>`).join('')}</div></div><span class="ns-eye">Passo ${n} de 3</span><h1 class="ns-title">${title}</h1>${sub?`<p class="ns-sub">${sub}</p>`:''}`;
   const draw=()=>{const AS=ACC.st;let h='';
     theme({acc:'#e1061c',kit:['#111','#fff','#e1061c','liso']});/* tela inicial com a identidade da página Conheça */
     if(st.step==='home'){
-      const loc=st.loc||[];const curCid=C.G&&C.G.cid;
-      const main=loc.find(x=>x.cid===curCid)||loc[0];const others=loc.filter(x=>x!==main);
-      const hasAny=loc.length||C.hasSave()||(AS.user&&AS.careers.length);
-      const nmM=(main&&main.meta&&main.meta.manager)||(AS.user&&AS.user.name)||'';
-      h+=`<span class="ns-eye">${nmM?'Bem-vindo de volta, '+esc(nmM.split(' ')[0]):'Manager de futebol brasileiro'}</span><h1 class="ns-hero"><span>Seu clube</span><span><em>te espera.</em></span></h1>`;
-      if(main){const m=main.meta;h+=`<div class="ns-cont"><div class="ns-cont-top">${m.kit?shirtSvg(m.kit,null,64):''}<div><small>Continuar carreira</small><b>${esc(m.club||'?')}</b><span>Série ${esc(m.div||'?')} · temporada ${m.season||''}${m.titles?` · ${m.titles} título${m.titles===1?'':'s'}`:''}${m.manager?` · ${esc(m.manager)}`:''}</span></div></div><button class="ns-btn pri ns-wide" data-lload="${main.cid}">${nsI('play',22)} Continuar</button></div>`}
-      else if(C.hasSave())h+=`<div class="ns-cont"><button class="ns-btn pri ns-wide" id="s-cont">${nsI('play',22)} Continuar carreira</button></div>`;
-      
-      h+=`<button class="ns-btn ${hasAny?'gh':'pri'} ns-wide ns-new" data-ns="div">${nsI('plus',22)} Nova carreira</button>`;
-      if(others.length)h+=`<div class="ns-list"><div class="ns-lh">${nsI('dev',16)} Outras carreiras neste aparelho</div>${others.map(x=>row(x.meta,`<button class="ns-btn pri xs" data-lload="${x.cid}">Jogar</button>`,`<button class="ns-del" data-ldel="${x.cid}" aria-label="Apagar">${nsI('del',18)}</button>`)).join('')}</div>`;
-      if(AS.online&&AS.user&&AS.careers.length)h+=`<div class="ns-list" id="s-cloud"><div class="ns-lh">${nsI('cloud',16)} Na nuvem</div>${AS.careers.map(cr=>row({...cr.meta},`<button class="ns-btn pri xs" data-cload="${cr.slot}">Jogar</button>`,`<button class="ns-del" data-cdel="${cr.slot}" aria-label="Apagar">${nsI('del',18)}</button>`,'nuvem')).join('')}</div>`;
-      h+=`<div class="ns-foot">${AS.online?(AS.user?`<span>${nsI('user',16)} ${esc(AS.user.name)}</span><a href="#" id="s-logout">Sair</a>`:`<button class="ns-btn gh sm" id="s-login">${nsI('cloud',18)} Entrar para salvar na nuvem</button>`):''}${window.FUTBOL_INSTALL?`<button class="ns-btn gh sm" data-install>Instalar app</button>`:''}<a class="ns-link" href="conheca/">Conheça o FUTBOL</a></div>`}
+      const loc=st.loc||[];const curCid=C.G&&C.G.cid;const cloud=AS.online&&AS.user?AS.careers:[];
+      const locCids=new Set(loc.map(x=>x.cid));const cloudOnly=cloud.filter(cr=>!(cr.meta&&cr.meta.cid&&locCids.has(cr.meta.cid)));
+      const rows=[...loc.slice().sort((a,b)=>(b.cid===curCid)-(a.cid===curCid)||((b.meta&&b.meta.savedAt)||0)-((a.meta&&a.meta.savedAt)||0)).map(x=>({m:x.meta||{},load:`data-lload="${x.cid}"`,del:`data-ldel="${x.cid}"`,tag:x.cid===curCid?'Última jogada':'Neste aparelho'})),
+        ...cloudOnly.map(cr=>({m:cr.meta||{},load:`data-cload="${cr.slot}"`,del:`data-cdel="${cr.slot}"`,tag:'Na nuvem'}))];
+      if(!rows.length&&C.hasSave()&&C.G)rows.push({m:{club:C.G.clubs[C.G.user]?C.G.clubs[C.G.user].name:'?',kit:C.G.clubs[C.G.user]&&C.G.clubs[C.G.user].kit,div:C.G.clubs[C.G.user]&&C.G.clubs[C.G.user].div,season:C.G.season,manager:C.G.manager},load:'id="s-cont"',del:'',tag:'Última jogada'});
+      const nmM=(rows[0]&&rows[0].m.manager)||(AS.user&&AS.user.name)||'';
+      h+=`<span class="ns-eye">${nmM?'Bem-vindo, '+esc(String(nmM).split(' ')[0]):'Manager de futebol brasileiro'}</span><h1 class="ns-hero"><span>Vamos</span><span><em>jogar.</em></span></h1>`;
+      const car=`<div class="ns-card"><div class="ns-card-h"><b>Minhas carreiras</b>${rows.length?`<small>${rows.length} salva${rows.length>1?'s':''}</small>`:''}</div>
+        ${rows.length?`<div class="ns-saves">${rows.map(r=>`<div class="ns-save" role="button" tabindex="0" ${r.load}>${r.m.kit?shirtSvg(r.m.kit,null,52):''}<div class="ns-save-t"><small>${r.tag}</small><b>${esc(r.m.club||'?')}</b><span>Série ${esc(r.m.div||'?')} · ${r.m.season||''}${r.m.manager?' · '+esc(r.m.manager):''}</span></div>${r.del?`<button class="ns-del" ${r.del} aria-label="Apagar carreira">${nsI('del',18)}</button>`:''}<span class="ns-go" aria-hidden="true">${nsI('play',20)}</span></div>`).join('')}</div>`:'<p class="ns-empty">Nenhuma carreira salva neste aparelho.</p>'}
+        ${AS.online?(AS.user?`<div class="ns-acc">${nsI('user',18)}<span>Conectado como <b>${esc(AS.user.name)}</b>. Suas carreiras da nuvem aparecem aqui.</span><a href="#" id="s-logout">Sair</a></div>`:`<div class="ns-acc">${nsI('cloud',18)}<span>Jogou em outro aparelho? Entre na sua conta para ver as carreiras salvas na nuvem.</span><button class="ns-btn gh sm" id="s-login">Entrar</button></div>`):''}</div>`;
+      const nova=`<button class="ns-btn ${rows.length?'gh':'pri'} ns-wide ns-new" data-ns="div">${nsI('plus',22)} Começar nova carreira</button>`;
+      h+=rows.length?car+nova:nova+car;
+      h+=`<div class="ns-foot">${window.FUTBOL_INSTALL?`<button class="ns-btn gh sm" data-install>Instalar app</button>`:''}<a class="ns-link" href="conheca/">Conheça o FUTBOL</a></div>`}
     else if(st.step==='div'){h+=head(1,'Onde você começa?','Dá para subir de divisão a cada temporada.');
       h+=`<div class="ns-divs">${C.DIVS.slice().reverse().map(d=>{const x=NS_DIV[d]||['Série '+d,'',''];return `<button class="ns-div ${d==='D'?'rec':''}" data-div="${d}"><span class="ns-div-n">${x[0]}</span><span class="ns-div-tag">${x[1]}</span><span class="ns-div-d">${x[2]}</span><span class="ns-div-c">${C.D.divisions[d].length} clubes ›</span></button>`}).join('')}</div>`}
     else if(st.step==='club'){const list=C.D.divisions[st.div];h+=head(2,'Escolha seu clube',`Série ${st.div} · ${list.length} clubes`);
@@ -751,7 +752,7 @@ function startScreen(){
     else if(st.step==='name'){const c=fake(st.club);h+=head(3,'Tudo pronto','');
       h+=`<div class="ns-sum">${shirtSvg(c.kit,null,110)}<b>${esc(c.name)}</b><span>Série ${st.div}</span></div><label class="ns-lbl" for="s-name">Seu nome de treinador</label><input type="text" id="s-name" placeholder="Ex.: ${esc(AS.user?AS.user.name:'Professor Márcio')}" value="${esc(st.name||(AS.user?AS.user.name:''))}" maxlength="28" autocomplete="name">
         <button class="ns-btn pri ns-wide" id="s-go">${nsI('play',22)} Começar carreira</button><p class="ns-note">${AS.user?'A carreira fica salva neste aparelho e na nuvem.':'A carreira fica salva neste aparelho. Entre na conta para guardar na nuvem.'}</p>`}
-    el.innerHTML=`<div class="ns"><div class="ns-bg" aria-hidden="true"><img src="conheca/img/v-bg.jpg" alt=""></div><div class="ns-nav"><a href="conheca/" aria-label="Conheça o FUTBOL">${NS_LG}</a><a class="ns-btn gh sm" href="conheca/">Conheça</a></div><div class="ns-in nsp-${st.step}">${h}</div></div>`;
+    el.innerHTML=`<div class="ns"><div class="ns-bg" aria-hidden="true"><img src="conheca/img/campo.svg" alt=""></div><div class="ns-nav"><a href="conheca/" aria-label="Conheça o FUTBOL">${NS_LG}</a><a class="ns-btn gh sm" href="conheca/">Conheça</a></div><div class="ns-in nsp-${st.step}">${h}</div></div>`;
     bindNs()};
   const bindNs=()=>{
     $$('[data-ns]',el).forEach(b=>b.onclick=()=>{const t=b.dataset.ns;if(t==='name'&&!st.club)return;if(t==='home'||t==='div')st.club=t==='home'?null:st.club;go2(t)});
@@ -763,11 +764,12 @@ function startScreen(){
       C.newGame(st.club,(nm&&nm.value.trim())||(AS.user?AS.user.name:'Treinador'));if(AS.user)C.G.slot=st.slot;C.save();if(AS.user)ACC.push().then(()=>ACC.list());launch()};
     const sl=$('#s-login',el);if(sl)sl.onclick=()=>ACC.authForm(()=>{draw();const n=ACC.st.careers.length;toast(n?`${n} carreira${n>1?'s':''} na nuvem`:'Nenhuma carreira salva na nuvem nesta conta')});
     const so=$('#s-logout',el);if(so)so.onclick=e=>{e.preventDefault();ACC.logout().then(draw)};
-    $$('[data-cload]',el).forEach(b=>b.onclick=err(async()=>{A.init();b.disabled=true;b.textContent='Carregando…';try{await ACC.load(+b.dataset.cload);launch()}catch(e){toast(esc(e.message));b.disabled=false;b.textContent='Jogar'}}));
-    $$('[data-cdel]',el).forEach(b=>b.onclick=err(async()=>{if(!confirm('Apagar esta carreira da nuvem? Não dá para desfazer.'))return;await ACC.delCareer(+b.dataset.cdel);draw()}));
+    $$('[data-cload]',el).forEach(b=>b.onclick=err(async e=>{if(e&&e.target.closest('.ns-del'))return;A.init();if(b.classList.contains('busy'))return;b.classList.add('busy');try{await ACC.load(+b.dataset.cload);launch()}catch(x){toast(esc(x.message));b.classList.remove('busy')}}));
+    $$('.ns-save',el).forEach(b=>b.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();b.click()}});
+    $$('[data-cdel]',el).forEach(b=>b.onclick=err(async e=>{e&&e.stopPropagation();if(!confirm('Apagar esta carreira da nuvem? Não dá para desfazer.'))return;await ACC.delCareer(+b.dataset.cdel);draw()}));
     const sc=$('#s-cont',el);if(sc)sc.onclick=err(async()=>{A.init();C.load();if(C.G&&C.G.cid){try{const r=await CAR.get(C.G.cid);if(r){const w=C.newerSave(C.G,JSON.parse(r.data));if(w!==C.G)C.loadObj(w)}}catch(e){}}launch()});
-    $$('[data-lload]',el).forEach(b=>b.onclick=err(async()=>{A.init();b.disabled=true;if(C.G&&C.G.cid&&C.G.cid!==b.dataset.lload)await CAR.put(C.G);const r=await CAR.get(b.dataset.lload);if(!r){b.disabled=false;throw new Error('Carreira não encontrada.')}let g=JSON.parse(r.data);const cur=C.current();if(cur&&cur.cid===g.cid)g=C.newerSave(g,cur);/* nunca abre uma cópia mais velha que a atual */C.loadObj(g);launch()}));
-    $$('[data-ldel]',el).forEach(b=>b.onclick=err(async()=>{const x=(st.loc||[]).find(y=>y.cid===b.dataset.ldel);if(!confirm(`Apagar a carreira do ${x?x.meta.club:''}? Não dá para desfazer.`))return;await CAR.del(b.dataset.ldel);if(C.G&&C.G.cid===b.dataset.ldel){C.wipe()}st.loc=await CAR.list();draw()}));
+    $$('[data-lload]',el).forEach(b=>b.onclick=err(async e=>{if(e&&e.target.closest('.ns-del'))return;A.init();if(b.classList.contains('busy'))return;b.classList.add('busy');if(C.G&&C.G.cid&&C.G.cid!==b.dataset.lload)await CAR.put(C.G);const r=await CAR.get(b.dataset.lload);if(!r){b.classList.remove('busy');throw new Error('Carreira não encontrada.')}let g=JSON.parse(r.data);const cur=C.current();if(cur&&cur.cid===g.cid)g=C.newerSave(g,cur);/* nunca abre uma cópia mais velha que a atual */C.loadObj(g);launch()}));
+    $$('[data-ldel]',el).forEach(b=>b.onclick=err(async e=>{e&&e.stopPropagation();const x=(st.loc||[]).find(y=>y.cid===b.dataset.ldel);if(!confirm(`Apagar a carreira do ${x?x.meta.club:''}? Não dá para desfazer.`))return;await CAR.del(b.dataset.ldel);if(C.G&&C.G.cid===b.dataset.ldel){C.wipe()}st.loc=await CAR.list();draw()}));
   };
   if(!window.__nsPop){window.__nsPop=1;addEventListener('popstate',e=>{const E=$('#start');if(!E||E.hidden||!window.__nsGo)return;window.__nsGo((e.state&&e.state.ns)||'home')})}
   window.__nsGo=step=>{if(st.step!==step){st.step=step;if(step==='home'||step==='div')st.club=step==='home'?null:st.club;draw()}};
@@ -790,6 +792,8 @@ async function boot(){applyPref();bind();if(/[?&]instalar/.test(location.search)
       try{if(g.cid){const r=await CAR.get(g.cid);if(r){const w=C.newerSave(g,JSON.parse(r.data));if(w!==g){g=w;src='aparelho'}}}}catch(e){}
       try{if(ACC.st.user&&C.G.slot){const j=await ACC.api('load',null,'&slot='+C.G.slot);if(j&&j.data&&(!j.data.cid||!g.cid||j.data.cid===g.cid)){const w=C.newerSave(g,j.data);if(w!==g){g=w;src='nuvem'}}}}catch(e){}
       if(src){g.slot=C.G.slot||g.slot;C.loadObj(g);setTimeout(()=>toast(`Abrimos a versão mais avançada da sua carreira (${src==='nuvem'?'da nuvem':'guardada neste aparelho'}).`),900)}}
-    if(ACC.st.user&&!C.G.slot){C.G.slot=Math.max(0,...ACC.st.careers.map(c=>c.slot))+1;C.save()}launch()}else startScreen()}
+    if(ACC.st.user&&!C.G.slot){C.G.slot=Math.max(0,...ACC.st.careers.map(c=>c.slot))+1;C.save()}
+    let pick=false;try{pick=sessionStorage.getItem('futbol-pick')==='1';sessionStorage.removeItem('futbol-pick')}catch(e){}/* veio do botão Jogar: mostra as carreiras para escolher */
+    if(pick)startScreen();else launch()}else{try{sessionStorage.removeItem('futbol-pick')}catch(e){}startScreen()}}
 return {swapPlayers,boot,go,toast,err,theme,PREF,savePref,menuModal,crest,shirtSvg,shirtDefs,SHIRT,patCss,posTag,ovrTag,rtTag,fitBar,esc,surname,playerModal,recapModal,seasonModal,openModal,closeModal,renderTop,clubOf,get view(){return view},S,lum,mix,$,$$};
 })();

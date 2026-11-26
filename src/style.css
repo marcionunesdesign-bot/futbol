@@ -1523,3 +1523,21 @@ a,button,label,select,summary,[role=button],[data-go],[data-player]{touch-action
 .muted a,.ysum a,.tverd a{color:var(--acc2,var(--acc));text-decoration:underline;text-underline-offset:2px}
 .tverd{margin:0 0 6px;font:800 17px var(--hd);text-transform:uppercase;letter-spacing:.02em}.tverd.good{color:#4fe08a}.tverd.warn{color:#f5c055}.tverd.bad{color:#ff8a8a}
 @media (max-width:640px){.thist{font-size:12px}.thist td,.thist th{padding:5px 3px}.frame:first-child>.thist th:nth-child(2),.frame:first-child>.thist td:nth-child(2){display:none}}
+/* início: minhas carreiras grandes e fáceis de tocar */
+.ns-card{background:linear-gradient(180deg,#12161ae6,#0c0f11e6);border:1px solid #ffffff14;border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:12px;backdrop-filter:blur(6px)}
+.ns-card-h{display:flex;align-items:baseline;justify-content:space-between}.ns-card-h b{font:900 24px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;color:#f4f5f6}.ns-card-h small{color:#9aa1a9;font-size:13px}
+.ns-saves{display:flex;flex-direction:column;gap:8px}
+.ns-save{display:flex;align-items:center;gap:12px;padding:12px 12px 12px 10px;border-radius:16px;background:#ffffff08;border:1px solid #ffffff1a;cursor:pointer;min-height:76px;transition:border-color .2s,background .2s;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.ns-save:hover{border-color:#e1061c88;background:#e1061c12}.ns-save:active{transform:scale(.99)}.ns-save.busy{opacity:.6;pointer-events:none}
+.ns-save:first-child{border-color:#e1061c77;background:linear-gradient(90deg,#e1061c18,#ffffff06)}
+.ns-save-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}.ns-save-t small{font:800 11.5px "Barlow Condensed",sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#ff2a3d}
+.ns-save-t b{font:900 22px/1.05 "Barlow Condensed",sans-serif;text-transform:uppercase;color:#f4f5f6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ns-save-t span{color:#9aa1a9;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ns-go{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;flex:none;background:linear-gradient(180deg,#ff2236,#c40417);color:#fff;box-shadow:0 6px 18px #e1061c55}
+.ns-save .ns-del{width:42px;height:42px}
+.ns-empty{margin:0;color:#9aa1a9}
+.ns-acc{display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;background:#ffffff07;border:1px dashed #ffffff26;color:#c7ccd2;font-size:14px;line-height:1.35}.ns-acc>svg{flex:none;color:#ff2a3d}.ns-acc span{flex:1}.ns-acc a{color:#c7ccd2}
+@media (max-width:420px){.ns-acc{flex-wrap:wrap}.ns-acc .ns-btn{width:100%}}
+.ns-bg img{opacity:.5;transform:perspective(900px) rotateX(28deg) scale(1.35);transform-origin:50% 60%;filter:none}
+.ns-bg img{opacity:.85}
+.ns-bg::before{background:linear-gradient(90deg,#07090aee 0%,#07090ac4 40%,#07090a77 70%,#07090ab0 100%),linear-gradient(180deg,#07090a99,transparent 30%,transparent 60%,#07090a 100%)}
+@media (max-width:760px){.ns-bg::before{background:linear-gradient(180deg,#07090ad9,#07090aa6 40%,#07090ac4 70%,#07090a)}}
